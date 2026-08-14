@@ -1,7 +1,7 @@
 # Hermes Assistant (Docker-first)
 
 A reusable, per-environment Telegram assistant: **everything runs in Docker**.
-OpenRouter (DeepSeek V4) for thinking, OpenCode Go (DeepSeek V4) for coding via pi-agent.
+OpenCode Go (Grok 4.5 + DeepSeek V4) for thinking, coding, and auxiliary work.
 
 **Host requirement: Docker only.** No `uv`, `nvm`, `node`, `hermes`, or `pi` on the host.
 
@@ -29,8 +29,7 @@ That's it. No other install steps.
 
 | Key | Where |
 |---|---|
-| `OPENROUTER_API_KEY` | [openrouter.ai](https://openrouter.ai) → API keys (thinking model) |
-| `OPENCODE_GO_API_KEY` | [opencode.ai/auth](https://opencode.ai/auth) → workspace keys (coding / pi-agent) |
+| `OPENCODE_GO_API_KEY` | [opencode.ai/auth](https://opencode.ai/auth) → workspace keys (all models) |
 | `TELEGRAM_BOT_TOKEN` | Telegram `@BotFather` → `/newbot` |
 | `TELEGRAM_ALLOWED_USERS` | Telegram `@userinfobot` → your numeric ID |
 
@@ -45,7 +44,7 @@ from the repo into `~/.hermes/`. To update secrets later, either:
 
 | Job | Provider | Model |
 |---|---|---|
-| Thinking (chat / planning / analysis) | OpenRouter | `deepseek/deepseek-v4-flash` |
+| Thinking (chat / planning / analysis) | OpenCode Go | `grok-4.5` |
 | Coding (pi-agent) | OpenCode Go | `deepseek-v4-pro` |
 | Auxiliary (compression / review / title) | OpenCode Go | `deepseek-v4-flash` |
 
