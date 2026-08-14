@@ -63,11 +63,18 @@ region, add a registry mirror in Docker Desktop → Settings → Docker Engine, 
 `.env` (next to your keys):
 
 ```bash
+# Telegram (blocked in some regions) has its own proxy var — set this FIRST:
+TELEGRAM_PROXY=http://host.docker.internal:7890
+# General outbound (GitHub/opencode) — optional if only Telegram is blocked:
 HTTP_PROXY=http://host.docker.internal:7890
 HTTPS_PROXY=http://host.docker.internal:7890
 ```
 
 Replace `7890` with your VPN client's local proxy port (Clash `7890`, Surge `6152`).
+Use `host.docker.internal` (the host as seen from inside Docker), not `127.0.0.1`.
+If Telegram still shows `Name or service not known` / fallback-IP failures, the
+container isn't reaching the proxy — ensure the VPN is running on the host and
+Docker can reach it, then restart.
 
 > Tip: use your VPN client's **rule mode** to route only `github.com`, `ghcr.io`,
 > `api.telegram.org`, and `opencode.ai` through the proxy, keeping the rest of your
