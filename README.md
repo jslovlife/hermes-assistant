@@ -49,6 +49,15 @@ from the repo into `~/.hermes/`. To update secrets later, either:
 | Coding (pi-agent) | OpenCode Go | `deepseek-v4-pro` |
 | Auxiliary (compression / review / title) | OpenCode Go | `deepseek-v4-flash` |
 
+## GitLab (self-hosted)
+
+The assistant can work with GitLab (usually self-hosted). Configure per deployment:
+
+- `.env`: `GITLAB_URL` + `GITLAB_TOKEN`
+- SSH key for `git clone` / `git push`
+
+See the `gitlab` skill for full setup (SSH key, REST API, merge requests).
+
 ## Customize per deployment
 
 - `config/SOUL.md` — who the assistant is and what it focuses on (edit for each company).
