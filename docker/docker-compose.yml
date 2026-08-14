@@ -20,6 +20,19 @@ services:
       # Repo mount (config/soul/skills/.env source) — read-write
       - ${JSEC_ROOT:-$PWD}:/opt/jsec
 
+    # No docker.sock, no privileged, no host network/pid — the container can
+    # only reach the two mounted dirs (~/.hermes and the repo) plus outbound net.
+    # Hardening: resource limits (a runaway agent can't starve the host),
+    # process cap, and no-new-privileges.
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+          cpus: '2'
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+
     environment:
       # Remap the container user to the host owner
       - HERMES_UID=${HERMES_UID:-$(id -u)}

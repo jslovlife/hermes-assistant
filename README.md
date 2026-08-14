@@ -1,7 +1,7 @@
 # Hermes Assistant (Docker-first)
 
 A reusable, per-environment Telegram assistant: **everything runs in Docker**.
-OpenCode Go (Grok 4.5 + DeepSeek V4) for thinking, coding, and auxiliary work.
+OpenCode Go (DeepSeek V4) for thinking, coding, and auxiliary work.
 
 **Host requirement: Docker only.** No `uv`, `nvm`, `node`, `hermes`, or `pi` on the host.
 
@@ -16,22 +16,34 @@ Each deployment is a separate clone with its own `.env` (secrets) and
 > Example: "assistant for Company A" = a fresh clone with Company A's bot token,
 > allowlist, provider keys, and a SOUL.md that focuses it on Company A's work.
 
+## Prerequisites
+
+- **Docker** (Desktop on macOS/Windows, Engine on Linux) — installed and running.
+- **git**.
+
+That's it. No Python, Node, or Hermes install on the host.
+
 ## Quick start
 
-1. `git clone <your-repo-url> assistant`
-2. `cd assistant`
-3. `cp .env.example .env` — fill in your keys
-4. `./scripts/docker-gateway.sh up` — first run pulls the prebuilt base image, then it just works
+1. **Clone** — `git clone <this-repo-url> assistant`
+2. **Go in** — `cd assistant`
+3. **Create your secrets** — `cp .env.example .env`, then fill in:
+   - `OPENCODE_GO_API_KEY` — from [opencode.ai/auth](https://opencode.ai/auth) → create a workspace key
+   - `TELEGRAM_BOT_TOKEN` — message `@BotFather` on Telegram → `/newbot` → copy the token
+   - `TELEGRAM_ALLOWED_USERS` — message `@userinfobot` → copy your **numeric** user ID (digits only, not the bot)
+4. **Start** — `./scripts/docker-gateway.sh up` (first run pulls the prebuilt image; then it's live)
+5. **Verify** — `./scripts/doctor.sh` and message your bot in Telegram.
 
 That's it. No other install steps.
 
 ### Secrets (.env)
 
-| Key | Where |
-|---|---|
-| `OPENCODE_GO_API_KEY` | [opencode.ai/auth](https://opencode.ai/auth) → workspace keys (all models) |
-| `TELEGRAM_BOT_TOKEN` | Telegram `@BotFather` → `/newbot` |
-| `TELEGRAM_ALLOWED_USERS` | Telegram `@userinfobot` → your numeric ID |
+| Key | Where | Required |
+|---|---|---|
+| `OPENCODE_GO_API_KEY` | [opencode.ai/auth](https://opencode.ai/auth) → workspace keys | ✅ |
+| `TELEGRAM_BOT_TOKEN` | Telegram `@BotFather` → `/newbot` | ✅ |
+| `TELEGRAM_ALLOWED_USERS` | Telegram `@userinfobot` → your numeric ID | ✅ |
+| `OPENROUTER_API_KEY` | [openrouter.ai](https://openrouter.ai) → API keys | Optional (per-token overflow fallback) |
 
 `.env` is gitignored — your keys never leave the machine.
 
@@ -44,11 +56,16 @@ from the repo into `~/.hermes/`. To update secrets later, either:
 
 | Job | Provider | Model |
 |---|---|---|
-| Thinking (chat / planning / analysis) | OpenCode Go | `grok-4.5` |
+| Thinking (chat / planning / analysis) | OpenCode Go | `deepseek-v4-flash` |
 | Coding (pi-agent) | OpenCode Go | `deepseek-v4-pro` |
 | Auxiliary (compression / review / title) | OpenCode Go | `deepseek-v4-flash` |
 
 ## Behind a VPN / firewall
+
+> **Most setups need NO proxy.** The assistant connects directly to Telegram and
+> opencode.ai out of the box. Only configure a proxy if your network actually blocks
+> those hosts (e.g. mainland China) — and you must have a local proxy client
+> (Clash/Surge/V2Ray) running; an empty or unreachable proxy breaks everything.
 
 The assistant needs outbound access to Telegram, GitHub, and opencode.ai — blocked
 or throttled in some regions (e.g. mainland China). A VPN solves this, but Docker
@@ -95,6 +112,31 @@ See the `gitlab` skill for full setup (SSH key, REST API, merge requests).
 | `./scripts/docker-gateway.sh status/logs/restart` | Manage the container |
 | `./scripts/doctor.sh` | Health check (Docker + secrets) |
 
+## Troubleshooting
+
+**The bot never responds / gateway logs show `Connecting to Telegram (attempt 1/8)` or timeouts.**
+The Docker Desktop (macOS) container VM has no working IPv6 route, and the Python
+Telegram stack tries IPv6 first. The fix is already shipped in `.env.example` and
+`config/hermes.config.yaml` — make sure your `.env` includes:
+
+```bash
+HERMES_TELEGRAM_DISABLE_FALLBACK_IPS=1
+HERMES_TELEGRAM_HTTP_READ_TIMEOUT=120
+HERMES_TELEGRAM_HTTP_CONNECT_TIMEOUT=20
+```
+(and `force_ipv4: true` is under `network:` in `config/hermes.config.yaml`). Then
+`./scripts/docker-gateway.sh restart`. These are harmless on machines with IPv6.
+
+**`Name or service not known` for api.telegram.org.** The host DNS can't resolve
+Telegram (blocked/poisoned DNS). Try `TELEGRAM_FALLBACK_IPS=149.154.166.110` in `.env`,
+or fix the host's DNS.
+
+**Bot still won't respond after starting.** Check:
+- The token is correct and unique — `@BotFather` → `/token`. One bot = one token; a
+  second instance polling the same bot causes `409 Conflict` and connection resets.
+- `TELEGRAM_ALLOWED_USERS` is your numeric ID, not the bot username.
+- `./scripts/doctor.sh` shows all secrets set.
+
 ## Layout
 
 ```
@@ -108,8 +150,31 @@ scripts/docker-gateway.sh   → build + run
 scripts/doctor.sh           → health check
 ```
 
-## Safety
+## Safety & security model
 
-- **Never commit `.env`.** Keys are per-instance and isolated.
-- One Telegram bot per token — do not attach a second integration to the same token.
-- Production deploys need an explicit yes.
+The agent runs in an isolated Docker container. **What it can do:**
+
+- Read/write **only** two directories: `~/.hermes` (its own runtime data) and the
+  repo clone (where it commits code). Everything else on your machine is out of reach.
+- Make outbound network calls (Telegram, opencode.ai, GitHub) to do its job.
+
+**What it cannot do** (by design):
+
+- **No host control** — the Docker socket is **not** mounted, so the container
+  cannot start/inspect/stop containers or reach the host daemon.
+- **No privileged mode, no host network, no host PID/namespace.**
+- **Hardened** — resource limits (4 GB RAM, 2 CPU), a process cap, and
+  `no-new-privileges` prevent a runaway agent loop from starving or escalating on
+  the host.
+
+**Secrets & keys:**
+
+- Live in `.env`, which is **gitignored and never committed**.
+- Never pasted into chat — the agent reads them from env / `.env` only.
+- One Telegram bot per token; don't attach a second integration to the same token.
+
+**Production deploys** need an explicit "deploy prod" yes from the operator.
+
+The container image is built from the public `nousresearch/hermes-agent` base plus
+the public `@earendil-works/pi-coding-agent` npm package — a transparent, verifiable
+supply chain (both are open source).

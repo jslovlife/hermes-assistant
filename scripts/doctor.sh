@@ -26,9 +26,11 @@ fi
 # Secrets
 ENV="${HERMES_HOME:-$HOME/.hermes}/.env"
 if [ -f "$ENV" ]; then
-  for key in OPENROUTER_API_KEY OPENCODE_GO_API_KEY TELEGRAM_BOT_TOKEN TELEGRAM_ALLOWED_USERS; do
+  for key in OPENCODE_GO_API_KEY TELEGRAM_BOT_TOKEN TELEGRAM_ALLOWED_USERS; do
     grep -q "^${key}=.+" "$ENV" && ok "$key set" || bad "$key empty"
   done
+  # OpenRouter is optional (only needed as a per-token overflow fallback).
+  grep -q "^OPENROUTER_API_KEY=.+" "$ENV" && ok "OPENROUTER_API_KEY set (optional)" || warn "OPENROUTER_API_KEY not set (optional)"
 else
   bad ".env not found at $ENV"
 fi
