@@ -3,11 +3,11 @@
 
 model:
   provider: openrouter
-  default: deepseek/deepseek-v4-pro
+  default: deepseek/deepseek-v4-flash
 
 agent:
   # Thinking (main agent) on OpenRouter DeepSeek V4; coding via pi on OpenCode Go.
-  reasoning_effort: medium
+  reasoning_effort: low
 
 fallback_providers:
   - provider: opencode-go
