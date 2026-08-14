@@ -1,12 +1,12 @@
-# Hermes assistant profile — OpenRouter + OpenCode Go + Telegram.
+# Hermes assistant profile — OpenCode Go (all models) + Telegram.
 # Applied to ~/.hermes/config.yaml by the container auto-seeder on first boot.
 
 model:
-  provider: openrouter
-  default: deepseek/deepseek-v4-flash
+  provider: opencode-go
+  default: grok-4.5
 
 agent:
-  # Thinking (main agent) on OpenRouter DeepSeek V4; coding via pi on OpenCode Go.
+  # Thinking (main agent) on Grok 4.5; coding via pi on DeepSeek V4 Pro.
   reasoning_effort: low
 
 fallback_providers:
