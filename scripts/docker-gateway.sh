@@ -17,11 +17,13 @@ export HERMES_GID="${HERMES_GID:-$(id -g)}"
 COMPOSE=(docker compose -f "$COMPOSE_DIR/docker-compose.yml" --project-directory "$ROOT")
 cd "$ROOT"
 
-# Build hermes-agent:base from GitHub (once, cached forever)
+# Pull prebuilt hermes-agent:base from Docker Hub (once, cached forever).
+# (Build-from-source hit ghcr.io pull failures on some networks — Docker Hub is far more reliable.)
 build_base() {
   if ! docker image inspect hermes-agent:base >/dev/null 2>&1; then
-    echo "hermes-agent:base missing — building from GitHub (first run, ~15–20 min)..."
-    docker build -t hermes-agent:base https://github.com/NousResearch/hermes-agent.git
+    echo "hermes-agent:base missing — pulling prebuilt image from Docker Hub (one time)..."
+    docker pull nousresearch/hermes-agent:latest
+    docker tag nousresearch/hermes-agent:latest hermes-agent:base
   fi
 }
 
