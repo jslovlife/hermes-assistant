@@ -3,10 +3,10 @@
 
 model:
   provider: opencode-go
-  default: grok-4.5
+  default: deepseek-v4-flash
 
 agent:
-  # Thinking (main agent) on Grok 4.5; coding via pi on DeepSeek V4 Pro.
+  # Thinking (main agent) on DeepSeek V4 Flash; coding via pi on DeepSeek V4 Pro.
   reasoning_effort: low
 
 fallback_providers:

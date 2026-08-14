@@ -44,7 +44,7 @@ from the repo into `~/.hermes/`. To update secrets later, either:
 
 | Job | Provider | Model |
 |---|---|---|
-| Thinking (chat / planning / analysis) | OpenCode Go | `grok-4.5` |
+| Thinking (chat / planning / analysis) | OpenCode Go | `deepseek-v4-flash` |
 | Coding (pi-agent) | OpenCode Go | `deepseek-v4-pro` |
 | Auxiliary (compression / review / title) | OpenCode Go | `deepseek-v4-flash` |
 
