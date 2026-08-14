@@ -29,5 +29,13 @@ services:
       - JSEC_ROOT=/opt/jsec
       # Allow file tools to write into runtime data and the repo mount
       - HERMES_WRITE_SAFE_ROOT=/opt/data:/opt/jsec
+      # Optional: route outbound traffic through a local VPN proxy (e.g. Clash on host).
+      # Set HTTP_PROXY/HTTPS_PROXY in .env to http://host.docker.internal:<port>.
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - http_proxy=${HTTP_PROXY:-}
+      - https_proxy=${HTTPS_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1,::1,host.docker.internal}
+      - no_proxy=${NO_PROXY:-localhost,127.0.0.1,::1,host.docker.internal}
 
     command: ["gateway", "run"]

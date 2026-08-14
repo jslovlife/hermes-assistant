@@ -1,7 +1,7 @@
 # Hermes Assistant (Docker-first)
 
 A reusable, per-environment Telegram assistant: **everything runs in Docker**.
-OpenRouter (DeepSeek V4) for thinking, OpenCode Go (DeepSeek V4) for coding via pi-agent.
+OpenCode Go (Grok 4.5 + DeepSeek V4) for thinking, coding, and auxiliary work.
 
 **Host requirement: Docker only.** No `uv`, `nvm`, `node`, `hermes`, or `pi` on the host.
 
@@ -29,8 +29,7 @@ That's it. No other install steps.
 
 | Key | Where |
 |---|---|
-| `OPENROUTER_API_KEY` | [openrouter.ai](https://openrouter.ai) → API keys (thinking model) |
-| `OPENCODE_GO_API_KEY` | [opencode.ai/auth](https://opencode.ai/auth) → workspace keys (coding / pi-agent) |
+| `OPENCODE_GO_API_KEY` | [opencode.ai/auth](https://opencode.ai/auth) → workspace keys (all models) |
 | `TELEGRAM_BOT_TOKEN` | Telegram `@BotFather` → `/newbot` |
 | `TELEGRAM_ALLOWED_USERS` | Telegram `@userinfobot` → your numeric ID |
 
@@ -45,9 +44,33 @@ from the repo into `~/.hermes/`. To update secrets later, either:
 
 | Job | Provider | Model |
 |---|---|---|
-| Thinking (chat / planning / analysis) | OpenRouter | `deepseek/deepseek-v4-flash` |
+| Thinking (chat / planning / analysis) | OpenCode Go | `grok-4.5` |
 | Coding (pi-agent) | OpenCode Go | `deepseek-v4-pro` |
 | Auxiliary (compression / review / title) | OpenCode Go | `deepseek-v4-flash` |
+
+## Behind a VPN / firewall
+
+The assistant needs outbound access to Telegram, GitHub, and opencode.ai — blocked
+or throttled in some regions (e.g. mainland China). A VPN solves this, but Docker
+Desktop does **not** inherit the Mac's VPN automatically. Configure it in two places:
+
+**Build time (once)** — so `docker build` can pull `ghcr.io` and Docker Hub:
+Docker Desktop → Settings → Resources → Proxies → Manual → set your VPN client's
+local proxy (e.g. Clash `http://127.0.0.1:7890`), then Apply & Restart.
+
+**Runtime** — so the running container can reach Telegram/GitHub/opencode. Add to
+`.env` (next to your keys):
+
+```bash
+HTTP_PROXY=http://host.docker.internal:7890
+HTTPS_PROXY=http://host.docker.internal:7890
+```
+
+Replace `7890` with your VPN client's local proxy port (Clash `7890`, Surge `6152`).
+
+> Tip: use your VPN client's **rule mode** to route only `github.com`, `ghcr.io`,
+> `api.telegram.org`, and `opencode.ai` through the proxy, keeping the rest of your
+> traffic direct — so the assistant never slows down your other work.
 
 ## GitLab (self-hosted)
 
