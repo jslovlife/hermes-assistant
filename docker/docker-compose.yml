@@ -1,0 +1,33 @@
+# Run the Hermes gateway inside Docker (zero host deps besides Docker + git).
+# Manage via: scripts/docker-gateway.sh {up|down|restart|logs|status|build}
+# Image builds from the jsec repo Dockerfile (FROM hermes-agent:base + pi-agent).
+# hermes-agent:base is built once from GitHub by docker-gateway.sh and cached.
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: jsec-assistant:latest
+    container_name: hermes-gateway
+    restart: unless-stopped
+
+    # No network_mode: host — Docker Desktop on macOS has limited support for it,
+    # and Telegram long-polling is outbound-only, so bridge networking works.
+    volumes:
+      # Persistent runtime data (sessions, memories, .env, skills, logs)
+      - ${HERMES_HOME:-$HOME/.hermes}:/opt/data
+      # Repo mount (config/soul/skills/.env source) — read-write
+      - ${JSEC_ROOT:-$PWD}:/opt/jsec
+
+    environment:
+      # Remap the container user to the host owner
+      - HERMES_UID=${HERMES_UID:-$(id -u)}
+      - HERMES_GID=${HERMES_GID:-$(id -g)}
+      - HERMES_REAL_HOME=${HERMES_REAL_HOME:-$HOME}
+      # Inside the container the repo is always mounted here (host path is the volume source above)
+      - JSEC_ROOT=/opt/jsec
+      # Allow file tools to write into runtime data and the repo mount
+      - HERMES_WRITE_SAFE_ROOT=/opt/data:/opt/jsec
+
+    command: ["gateway", "run"]

@@ -1,0 +1,77 @@
+# Hermes assistant profile — OpenRouter + OpenCode Go + Telegram.
+# Applied to ~/.hermes/config.yaml by the container auto-seeder on first boot.
+
+model:
+  provider: openrouter
+  default: deepseek/deepseek-v4-pro
+
+agent:
+  # Thinking (main agent) on OpenRouter DeepSeek V4; coding via pi on OpenCode Go.
+  reasoning_effort: medium
+
+fallback_providers:
+  - provider: opencode-go
+    model: deepseek-v4-pro
+
+auxiliary:
+  compression:
+    provider: opencode-go
+    model: deepseek-v4-flash
+  background_review:
+    provider: opencode-go
+    model: deepseek-v4-flash
+  title_generation:
+    provider: opencode-go
+    model: deepseek-v4-flash
+
+terminal:
+  backend: local
+  cwd: "/opt/jsec/workspaces"
+  timeout: 300
+  home_mode: auto
+
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  write_approval: true
+
+skills:
+  write_approval: true
+
+display:
+  tool_progress: new
+  show_reasoning: false
+  platforms:
+    telegram:
+      tool_progress: new
+      notifications: important
+
+stt:
+  enabled: true
+  echo_transcripts: true
+  provider: local
+
+delegation:
+  max_concurrent_children: 2
+  provider: opencode-go
+  model: deepseek-v4-pro
+
+gateway:
+  streaming: true
+
+platforms:
+  telegram:
+    extra:
+      status_indicator: true
+      guest_mode: true
+      require_mention: false
+      command_menu:
+        max_commands: 40
+        priority_mode: prepend
+        priority:
+          - help
+          - status
+          - topic
+          - learn
+          - memory
+          - skills

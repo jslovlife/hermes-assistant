@@ -1,0 +1,12 @@
+.env
+.env.local
+*.pem
+*.key
+workspaces/*
+!workspaces/.gitkeep
+.DS_Store
+logs/
+.env.*
+!.env.example
+*.bak.*
+node_modules/

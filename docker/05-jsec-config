@@ -1,0 +1,40 @@
+#!/command/with-contenv sh
+# jsec seeder — copies repo config into the runtime data directory on first boot.
+# Runs after the Hermes bootstrap (which populates defaults), overwriting with our
+# repo versions. Guarded by a done file — does NOT overwrite on subsequent restarts.
+set -eu
+
+# Always read from the container mount, never the host path in JSEC_ROOT.
+JSEC="/opt/jsec"
+DATA="${HERMES_HOME:-/opt/data}"
+
+if [ -f "$DATA/.jsec-init-done" ]; then
+    exit 0
+fi
+
+if [ ! -d "$JSEC/config" ]; then
+    echo "[jsec] ERROR: $JSEC/config not found — is the repo mounted at /opt/jsec?" >&2
+    exit 1
+fi
+
+echo "[jsec] first boot — seeding config and secrets from $JSEC"
+
+cp "$JSEC/config/hermes.config.yaml" "$DATA/config.yaml"
+cp "$JSEC/config/SOUL.md" "$DATA/SOUL.md"
+
+# Secrets: copy real .env over the default template (01-hermes-setup created one from .env.example)
+if [ -f "$JSEC/.env" ]; then
+    cp "$JSEC/.env" "$DATA/.env"
+    chmod 600 "$DATA/.env"
+    echo "[jsec] .env seeded"
+fi
+
+# Skills: add on top of built-in baked skills (don't remove existing ones)
+if [ -d "$JSEC/skills" ]; then
+    mkdir -p "$DATA/skills"
+    cp -r "$JSEC/skills/"* "$DATA/skills/"
+    echo "[jsec] skills added"
+fi
+
+touch "$DATA/.jsec-init-done"
+echo "[jsec] config seeded"
