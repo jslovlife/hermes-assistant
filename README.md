@@ -150,8 +150,31 @@ scripts/docker-gateway.sh   → build + run
 scripts/doctor.sh           → health check
 ```
 
-## Safety
+## Safety & security model
 
-- **Never commit `.env`.** Keys are per-instance and isolated.
-- One Telegram bot per token — do not attach a second integration to the same token.
-- Production deploys need an explicit yes.
+The agent runs in an isolated Docker container. **What it can do:**
+
+- Read/write **only** two directories: `~/.hermes` (its own runtime data) and the
+  repo clone (where it commits code). Everything else on your machine is out of reach.
+- Make outbound network calls (Telegram, opencode.ai, GitHub) to do its job.
+
+**What it cannot do** (by design):
+
+- **No host control** — the Docker socket is **not** mounted, so the container
+  cannot start/inspect/stop containers or reach the host daemon.
+- **No privileged mode, no host network, no host PID/namespace.**
+- **Hardened** — resource limits (4 GB RAM, 2 CPU), a process cap, and
+  `no-new-privileges` prevent a runaway agent loop from starving or escalating on
+  the host.
+
+**Secrets & keys:**
+
+- Live in `.env`, which is **gitignored and never committed**.
+- Never pasted into chat — the agent reads them from env / `.env` only.
+- One Telegram bot per token; don't attach a second integration to the same token.
+
+**Production deploys** need an explicit "deploy prod" yes from the operator.
+
+The container image is built from the public `nousresearch/hermes-agent` base plus
+the public `@earendil-works/pi-coding-agent` npm package — a transparent, verifiable
+supply chain (both are open source).

@@ -27,6 +27,10 @@ auxiliary:
     provider: opencode-go
     model: deepseek-v4-flash
   title_generation:
+    # Disabled: opencode-go's Console Go endpoint doesn't support the JSON
+    # response_format Hermes uses for auto-titles, so every title call errored
+    # and triggered noisy OpenRouter/Nous fallback warnings. Sessions still work.
+    enabled: false
     provider: opencode-go
     model: deepseek-v4-flash
 
