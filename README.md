@@ -48,6 +48,30 @@ from the repo into `~/.hermes/`. To update secrets later, either:
 | Coding (pi-agent) | OpenCode Go | `deepseek-v4-pro` |
 | Auxiliary (compression / review / title) | OpenCode Go | `deepseek-v4-flash` |
 
+## Behind a VPN / firewall
+
+The assistant needs outbound access to Telegram, GitHub, and opencode.ai — blocked
+or throttled in some regions (e.g. mainland China). A VPN solves this, but Docker
+Desktop does **not** inherit the Mac's VPN automatically. Configure it in two places:
+
+**Build time (once)** — so `docker build` can pull `ghcr.io` and Docker Hub:
+Docker Desktop → Settings → Resources → Proxies → Manual → set your VPN client's
+local proxy (e.g. Clash `http://127.0.0.1:7890`), then Apply & Restart.
+
+**Runtime** — so the running container can reach Telegram/GitHub/opencode. Add to
+`.env` (next to your keys):
+
+```bash
+HTTP_PROXY=http://host.docker.internal:7890
+HTTPS_PROXY=http://host.docker.internal:7890
+```
+
+Replace `7890` with your VPN client's local proxy port (Clash `7890`, Surge `6152`).
+
+> Tip: use your VPN client's **rule mode** to route only `github.com`, `ghcr.io`,
+> `api.telegram.org`, and `opencode.ai` through the proxy, keeping the rest of your
+> traffic direct — so the assistant never slows down your other work.
+
 ## GitLab (self-hosted)
 
 The assistant can work with GitLab (usually self-hosted). Configure per deployment:
