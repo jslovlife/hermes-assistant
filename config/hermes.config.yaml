@@ -5,6 +5,12 @@ model:
   provider: opencode-go
   default: deepseek-v4-flash
 
+network:
+  # Prefer IPv4 only. Fixes Telegram connection hangs on Docker Desktop (macOS)
+  # where the container VM has no working IPv6 route: api.telegram.org returns
+  # AAAA records first, so the Python stack hangs on IPv6 before falling back.
+  force_ipv4: true
+
 agent:
   # Thinking (main agent) on DeepSeek V4 Flash; coding via pi on DeepSeek V4 Pro.
   reasoning_effort: low
