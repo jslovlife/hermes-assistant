@@ -16,8 +16,10 @@ agent:
   reasoning_effort: low
 
 fallback_providers:
+  # If DeepSeek consistently errors, auto-switch to GLM-5 (same OpenCode Go
+  # subscription, ~7.6s). Keeps the assistant alive on a non-DeepSeek model.
   - provider: opencode-go
-    model: deepseek-v4-pro
+    model: glm-5
 
 auxiliary:
   compression:
