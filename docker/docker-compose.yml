@@ -1,7 +1,7 @@
 # Run the Hermes gateway inside Docker (zero host deps besides Docker + git).
 # Manage via: scripts/docker-gateway.sh {up|down|restart|logs|status|build}
 # Image builds from the jsec repo Dockerfile (FROM hermes-agent:base + pi-agent).
-# hermes-agent:base is built once from GitHub by docker-gateway.sh and cached.
+# hermes-agent:base is pulled once from Docker Hub by docker-gateway.sh and cached.
 
 services:
   gateway:

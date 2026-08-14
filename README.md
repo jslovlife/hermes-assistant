@@ -21,7 +21,7 @@ Each deployment is a separate clone with its own `.env` (secrets) and
 1. `git clone <your-repo-url> assistant`
 2. `cd assistant`
 3. `cp .env.example .env` — fill in your keys
-4. `./scripts/docker-gateway.sh up` — first run builds images (~15 min), then it just works
+4. `./scripts/docker-gateway.sh up` — first run pulls the prebuilt base image, then it just works
 
 That's it. No other install steps.
 
@@ -54,9 +54,10 @@ The assistant needs outbound access to Telegram, GitHub, and opencode.ai — blo
 or throttled in some regions (e.g. mainland China). A VPN solves this, but Docker
 Desktop does **not** inherit the Mac's VPN automatically. Configure it in two places:
 
-**Build time (once)** — so `docker build` can pull `ghcr.io` and Docker Hub:
-Docker Desktop → Settings → Resources → Proxies → Manual → set your VPN client's
-local proxy (e.g. Clash `http://127.0.0.1:7890`), then Apply & Restart.
+**Build time (once)** — the base image is pulled from Docker Hub
+(`nousresearch/hermes-agent`), no ghcr.io involved. If Docker Hub is also slow in your
+region, add a registry mirror in Docker Desktop → Settings → Docker Engine, e.g.
+`{"registry-mirrors": ["https://docker.m.daocloud.io"]}`, then Apply & Restart.
 
 **Runtime** — so the running container can reach Telegram/GitHub/opencode. Add to
 `.env` (next to your keys):
