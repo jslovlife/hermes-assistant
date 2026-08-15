@@ -47,6 +47,7 @@ resolve_tenant() {
   export TENANT_IMAGE="${TENANT_IMAGE:-${name}-assistant}"
   export TENANT_MEM_LIMIT="${TENANT_MEM_LIMIT:-4g}"
   export TENANT_CPU_LIMIT="${TENANT_CPU_LIMIT:-2}"
+  export REPO_URL="${REPO_URL:-git@github.com:jslovlife/hermes-assistant.git}"
   export HERMES_HOME="$TENANT_DATA"
   export HERMES_REAL_HOME="${HERMES_REAL_HOME:-$HOME}"
   export JSEC_ROOT="$TENANT_ROOT"
@@ -54,8 +55,33 @@ resolve_tenant() {
   export HERMES_GID="${HERMES_GID:-$(id -g)}"
 }
 
+# Ensure a tenant's repo (control-plane clone) exists; clone if missing.
+# Used by cmd_up so a fresh tenant needs no separate `new` step.
+ensure_tenant_repo() {
+  if [ -d "$TENANT_ROOT" ]; then
+    return 0
+  fi
+  mkdir -p "$(dirname "$TENANT_ROOT")" "$TENANT_DATA"
+  echo "[tenant] repo '$TENANT_ROOT' not found — cloning template $REPO_URL ..."
+  git clone "$REPO_URL" "$TENANT_ROOT"
+  # Seed the tenant's .env from the template example if none exists.
+  if [ ! -f "$TENANT_DATA/.env" ]; then
+    cp "$ROOT/tenants/jojopa/.env.example" "$TENANT_DATA/.env" 2>/dev/null || \
+      cp "$ROOT/.env.example" "$TENANT_DATA/.env"
+    echo "[tenant] seeded $TENANT_DATA/.env — FILL IN the bot token before first start."
+  fi
+}
+
 compose_run() {
-  docker compose -f "$COMPOSE_DIR/docker-compose.yml" --project-directory "$TENANT_ROOT" "$@"
+  # The compose file lives inside the tenant's own repo clone (docker/). A
+  # tenant's repo is mounted at /opt/jsec inside the container, matching the
+  # build context. Fall back to this repo's compose for conf-based tenants
+  # (newma) whose root is the current install.
+  local cmp="$TENANT_ROOT/docker/docker-compose.yml"
+  if [ ! -f "$cmp" ]; then
+    cmp="$COMPOSE_DIR/docker-compose.yml"
+  fi
+  docker compose -f "$cmp" --project-directory "$TENANT_ROOT" "$@"
 }
 
 cmd_list() {
@@ -90,12 +116,14 @@ cmd_new() {
 cmd_up() {
   local name="$1"
   resolve_tenant "$name"
+  ensure_tenant_repo   # auto-clone a fresh tenant's repo so build context exists
   # Build a per-tenant image the first time (thin wrapper: FROM hermes-agent:base + pi-agent)
   if ! docker image inspect "$TENANT_IMAGE:latest" >/dev/null 2>&1; then
     build_base
     echo "Building $TENANT_IMAGE:latest ..."
-    docker compose -f "$COMPOSE_DIR/docker-compose.yml" \
-      --project-directory "$TENANT_ROOT" build
+    local cmp="$TENANT_ROOT/docker/docker-compose.yml"
+    [ -f "$cmp" ] || cmp="$COMPOSE_DIR/docker-compose.yml"
+    docker compose -f "$cmp" --project-directory "$TENANT_ROOT" build
   fi
   compose_run up -d
   echo "Tenant '$name' starting. Logs: scripts/tenant.sh logs $name"

@@ -138,10 +138,20 @@ Manage everything with the tenant manager:
 **Create a brand-new company (Company C):**
 
 ```bash
-./scripts/tenant.sh new company-c             # clones the template repo + seeds .env
-# then edit ~/hermes-tenants/company-c/data/.env  -> fill TELEGRAM_BOT_TOKEN + ALLOWED_USERS
+# 1. Start it — `up` auto-clones the template repo and seeds a .env placeholder
+./scripts/tenant.sh up company-c
+#    -> clones repo to ~/hermes-tenants/company-c/repo
+#    -> seeds ~/hermes-tenants/company-c/data/.env (fill it before the bot works)
+
+# 2. Fill in the bot token + your Telegram ID
+open -e ~/hermes-tenants/company-c/data/.env
+#    set TELEGRAM_BOT_TOKEN and TELEGRAM_ALLOWED_USERS
+
+# 3. Start again (now that the bot token is set)
 ./scripts/tenant.sh up company-c
 ```
+
+(For an existing tenant whose repo is already present, `up` just builds/start.)
 
 **Isolation guarantees:** each tenant mounts its **own** repo at `/opt/jsec`
 and its **own** data dir at `/opt/data`. `.env`, `state.db`, memory, and skills
