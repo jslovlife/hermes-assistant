@@ -112,6 +112,42 @@ See the `gitlab` skill for full setup (SSH key, REST API, merge requests).
 | `./scripts/docker-gateway.sh status/logs/restart` | Manage the container |
 | `./scripts/doctor.sh` | Health check (Docker + secrets) |
 
+## Multi-tenant (running several companies)
+
+Each **company = one fully isolated Hermes instance** with its own bot token,
+its own runtime data (state.db / memory / skills / secrets), its own container
+and image. This is the "one company per clone/container" model.
+
+Two tenants are set up:
+
+- **`newma`** — the current install (this repo + `~/.hermes`). Handled by
+  `tenants/newma.conf` which points at the existing paths.
+- **`jojopa`** — a brand-new tenant scaffolded under `~/hermes-tenants/jojopa`.
+  Fill its bot token before first start.
+
+Manage everything with the tenant manager:
+
+```bash
+./scripts/tenant.sh list                      # list tenants + running containers
+./scripts/tenant.sh up   jojopa               # build image + start jojopa
+./scripts/tenant.sh down jojopa               # stop jojopa (keeps its data)
+./scripts/tenant.sh logs  jojopa              # tail jojopa logs
+./scripts/tenant.sh status jojopa             # container status
+```
+
+**Create a brand-new company (Company C):**
+
+```bash
+./scripts/tenant.sh new company-c             # clones the template repo + seeds .env
+# then edit ~/hermes-tenants/company-c/data/.env  -> fill TELEGRAM_BOT_TOKEN + ALLOWED_USERS
+./scripts/tenant.sh up company-c
+```
+
+**Isolation guarantees:** each tenant mounts its **own** repo at `/opt/jsec`
+and its **own** data dir at `/opt/data`. `.env`, `state.db`, memory, and skills
+are per-tenant — no shared state between companies. Each bot token is unique,
+so no `409 Conflict` collisions.
+
 ## Troubleshooting
 
 **The bot never responds / gateway logs show `Connecting to Telegram (attempt 1/8)` or timeouts.**

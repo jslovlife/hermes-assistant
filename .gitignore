@@ -10,3 +10,9 @@ logs/
 !.env.example
 *.bak.*
 node_modules/
+
+# Multi-tenant runtime data (never commit a tenant's secrets or state)
+tenants/*/data/
+tenants/*/.env
+tenants/*/.env.*
+!tenants/*/.env.example
