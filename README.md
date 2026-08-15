@@ -74,6 +74,30 @@ scripts/agent.sh up newma
 `restore` writes an `agent.conf` override that records where the data lives, so
 `list`, `config`, `up`, `logs`, etc. all work against the re-attached data.
 
+### Fully renaming an agent (`rename`)
+
+To change an agent's name **and** rename its data folder (a clean rename, not
+just re-attachment), use `rename`. It stops + removes the old container, moves
+the data dir to a path under the new name, and re-registers — memory carried
+over because the folder itself is moved, not recreated.
+
+```bash
+scripts/agent.sh rename <old> <new>
+scripts/agent.sh up <new>
+```
+
+Example — rename the old `jojopa` agent to `newma` (folder + container):
+
+```bash
+scripts/agent.sh rename jojopa newma
+scripts/agent.sh up newma
+```
+
+Works for both the default layout (`$HOME/hermes-agents/<name>/data`) and the
+older `$HOME/hermes-tenants/<name>/data` layout (via an existing `agent.conf`).
+It refuses to overwrite an existing target name and refuses `old == new`.
+
+
 
 
 ## Prerequisites

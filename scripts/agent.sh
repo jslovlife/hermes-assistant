@@ -14,6 +14,8 @@
 #   scripts/agent.sh logs <name>                 # tail logs
 #   scripts/agent.sh status <name>               # container status
 #   scripts/agent.sh config <name>               # print the agent's .env path (edit this per agent)
+#   scripts/agent.sh restore <name> <data-dir>   # attach a name to an EXISTING data dir (recover after container loss)
+#   scripts/agent.sh rename <old> <new>          # fully rename an agent (stop+rm old container, move data, keep memory)
 #
 # Workflow the operator asked for:
 #   1. git clone this repo ONCE (anywhere on the host).
@@ -72,6 +74,20 @@ valid_name() {
   case "$1" in
     *[!a-zA-Z0-9_-]*|"") echo "Error: agent name must be alphanumeric/-/_ only: '$1'" >&2; exit 1 ;;
   esac
+}
+
+# Resolve an agent's data dir, honoring a per-agent agent.conf override.
+#   resolve_data <name>  -> echoes the absolute data dir path
+resolve_data() {
+  local name="$1"
+  local conf="$AGENTS_HOME/$name/agent.conf"
+  local datadir="$AGENTS_HOME/$name/data"
+  if [ -f "$conf" ]; then
+    unset AGENT_DATA
+    . "$conf"
+    datadir="${AGENT_DATA:-$datadir}"
+  fi
+  echo "$datadir"
 }
 
 cmd_list() {
@@ -149,6 +165,58 @@ cmd_restore() {
   echo "  Start: scripts/agent.sh up $name"
 }
 
+# Rename an agent completely: stop+remove old container, move the data dir
+# (renaming the path segment), and re-register under the new name. Memory is
+# carried over because the data folder itself is moved, not recreated.
+#   scripts/agent.sh rename <old> <new>
+cmd_rename() {
+  local old="$1" new="$2"
+  valid_name "$old"; valid_name "$new"
+  [ "$old" != "$new" ] || { echo "Error: old and new names are the same: '$old'"; exit 1; }
+
+  local olddir oldws newdir newws
+  olddir="$(resolve_data "$old")"
+  oldws="$AGENTS_HOME/$old/workspaces"
+
+  # New data dir = same path with the "/<old>/" segment renamed to "/<new>/".
+  newdir="${olddir//\/$old\//\/$new\/}"
+  newws="${oldws//\/$old\//\/$new\/}"
+
+  if [ ! -d "$olddir" ]; then
+    echo "Error: agent '$old' data dir not found: $olddir" >&2; exit 1
+  fi
+  if [ -e "$newdir" ] || [ -e "$newws" ]; then
+    echo "Error: target '$new' already exists ($newdir or $newws). Refusing to overwrite." >&2; exit 1
+  fi
+
+  echo "[rename] stopping + removing old container for '$old' (if running)..."
+  docker rm -f "$old" >/dev/null 2>&1 || true
+  docker rm -f "$old-gateway" >/dev/null 2>&1 || true
+
+  echo "[rename] moving data: $olddir -> $newdir"
+  mkdir -p "$(dirname "$newdir")"
+  mv "$olddir" "$newdir"
+  if [ -d "$oldws" ] && [ "$oldws" != "$newdir" ]; then
+    echo "[rename] moving workspace: $oldws -> $newws"
+    mkdir -p "$(dirname "$newws")"
+    mv "$oldws" "$newws"
+  fi
+
+  # Register the new name. If the new layout path matches the default, no
+  # agent.conf is needed; otherwise write one pointing at the moved data.
+  mkdir -p "$AGENTS_HOME/$new"
+  if [ "$newdir" != "$AGENTS_HOME/$new/data" ]; then
+    printf 'AGENT_DATA=%q\nAGENT_WORKSPACES=%q\n' "$newdir" "${newws:-$AGENTS_HOME/$new/workspaces}" > "$AGENTS_HOME/$new/agent.conf"
+  fi
+  mkdir -p "${newws:-$AGENTS_HOME/$new/workspaces}"
+
+  # Drop the old registration (its data was moved out).
+  rm -rf "$AGENTS_HOME/$old"
+
+  echo "Agent '$old' -> '$new' renamed. Memory carried over (data now at $newdir)."
+  echo "  Start: scripts/agent.sh up $new"
+}
+
 CMD="${1:-list}"
 case "$CMD" in
   list) cmd_list ;;
@@ -163,6 +231,10 @@ case "$CMD" in
   restore)
     [ $# -ge 3 ] || { echo "usage: agent.sh restore <name> <existing-data-dir>"; exit 1; }
     cmd_restore "$2" "$3"
+    ;;
+  rename)
+    [ $# -ge 3 ] || { echo "usage: agent.sh rename <old> <new>"; exit 1; }
+    cmd_rename "$2" "$3"
     ;;
   down)
     [ $# -ge 2 ] || { echo "usage: agent.sh down <name>"; exit 1; }
@@ -188,14 +260,16 @@ case "$CMD" in
     echo "$datadir/.env"
     ;;
   *)
-    echo "usage: agent.sh {list|new|up|down|restart|logs|status|config|restore}"
+    echo "usage: agent.sh {list|new|up|down|restart|logs|status|config|restore|rename}"
     echo
     echo "  new <name>             create an independent agent (no clone)"
     echo "  restore <name> <dir>   attach an agent name to an EXISTING data dir (keeps memory)"
+    echo "  rename <old> <new>     fully rename an agent (stop+rm old container, move data dir, keep memory)"
     echo "  up   <name>            start it in its own container"
     echo
     echo "  e.g. scripts/agent.sh new alice && scripts/agent.sh up alice"
     echo "       scripts/agent.sh restore newma ~/hermes-tenants/jojopa/data && scripts/agent.sh up newma"
+    echo "       scripts/agent.sh rename jojopa newma && scripts/agent.sh up newma"
     exit 1
     ;;
 esac
