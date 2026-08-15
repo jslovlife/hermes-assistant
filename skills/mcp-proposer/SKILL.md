@@ -17,7 +17,7 @@ These may be proposed. Operator must type yes before install:
 - github
 - vercel (or fly)
 - browser / playwright (if Hermes skipped browser at install)
-- filesystem (scoped to `/opt/jsec/workspaces`)
+- filesystem (scoped to `/opt/workspaces`)
 
 Anything else: describe the need, do **not** `npx` an unknown MCP.
 

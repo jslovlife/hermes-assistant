@@ -38,7 +38,7 @@ auxiliary:
 
 terminal:
   backend: local
-  cwd: "/opt/jsec/workspaces"
+  cwd: "/opt/workspaces"
   timeout: 300
   home_mode: auto
 

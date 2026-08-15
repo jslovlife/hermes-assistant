@@ -15,7 +15,7 @@ Hermes plans. **pi-agent** writes the code.
 
 ## When to use
 
-- Scaffold a new app in `/opt/jsec/workspaces/<name>`
+- Scaffold a new app in `/opt/workspaces/<name>`
 - Multi-file features, refactors, test suites
 - Anything that would take more than ~3 file edits
 

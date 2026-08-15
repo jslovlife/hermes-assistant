@@ -16,6 +16,66 @@ Each deployment is a separate clone with its own `.env` (secrets) and
 > Example: "assistant for Company A" = a fresh clone with Company A's bot token,
 > allowlist, provider keys, and a SOUL.md that focuses it on Company A's work.
 
+### One clone → many agents (`scripts/agent.sh`)
+
+If you'd rather **clone once** and spin up several independent agents from that
+single clone, use `agent.sh` instead of per-tenant clones. Each agent gets its
+own container, its own data dir, its own workspace, and its own bot token — with
+**no per-agent clone and no rebuild**. Container paths are neutral
+(`/opt/repo`, `/opt/workspaces`, `/opt/data` — no branding).
+
+```bash
+git clone <this-repo-url> assistant
+cd assistant
+
+scripts/agent.sh new alice        # create agent "alice" (own data + workspace + .env)
+scripts/agent.sh config alice     # prints the path to alice's .env
+#   → edit that .env: set TELEGRAM_BOT_TOKEN + TELEGRAM_ALLOWED_USERS
+scripts/agent.sh up alice         # start it in its own container
+
+scripts/agent.sh new bob          # a second independent agent, same single clone
+scripts/agent.sh up bob
+
+scripts/agent.sh list             # all agents + running status
+scripts/agent.sh logs alice       # tail logs
+scripts/agent.sh down bob         # stop (keeps data)
+```
+
+Per-agent layout under `$HOME/hermes-agents/<name>/`:
+- `data/` — sessions, memories, `.env`, skills, logs (mounted at `/opt/data`)
+- `workspaces/` — the agent's project files (mounted at `/opt/workspaces`)
+
+The shared repo is mounted read-only at `/opt/repo`; the seeder copies config,
+SOUL, and skills from it on each agent's first boot. Each agent's `.env` stays
+separate, so every agent has its own Telegram bot and its own keys.
+
+### Recovering an agent after deleting its container (`restore`)
+
+**Containers are disposable; the agent's data lives on the host.** All memories,
+`state.db`, `.env`, and skills live in the agent's data dir, which is a bind-mount
+from the host — deleting the container does **not** delete the data.
+
+To bring an agent back under a new name (keeping all memory), just point the name
+at the existing data dir:
+
+```bash
+# find the data dir of the old agent (it's the host path bind-mounted to /opt/data)
+scripts/agent.sh restore <newname> <path-to-existing-data>
+scripts/agent.sh up <newname>
+```
+
+Example — resurrect the old `jojopa` agent as `newma`, memory intact:
+
+```bash
+scripts/agent.sh restore newma ~/hermes-tenants/jojopa/data
+scripts/agent.sh up newma
+```
+
+`restore` writes an `agent.conf` override that records where the data lives, so
+`list`, `config`, `up`, `logs`, etc. all work against the re-attached data.
+
+
+
 ## Prerequisites
 
 - **Docker** (Desktop on macOS/Windows, Engine on Linux) — installed and running.

@@ -1,0 +1,37 @@
+#!/command/with-contenv sh
+# agent seeder — copies repo config into the runtime data directory on first boot.
+# Runs after the Hermes bootstrap (which populates defaults), overwriting with our
+# repo versions. Guarded by a done file — does NOT overwrite on subsequent restarts.
+set -eu
+
+# Always read from the container mount, never the host path.
+REPO="${REPO_ROOT:-/opt/repo}"
+DATA="${HERMES_HOME:-/opt/data}"
+
+if [ -f "$DATA/.agent-init-done" ]; then
+    exit 0
+fi
+
+if [ ! -d "$REPO/config" ]; then
+    echo "[agent] ERROR: $REPO/config not found — is the repo mounted at /opt/repo?" >&2
+    exit 1
+fi
+
+echo "[agent] first boot — seeding config from $REPO"
+
+cp "$REPO/config/hermes.config.yaml" "$DATA/config.yaml"
+cp "$REPO/config/SOUL.md" "$DATA/SOUL.md"
+
+# Skills: add on top of built-in baked skills (don't remove existing ones)
+if [ -d "$REPO/skills" ]; then
+    mkdir -p "$DATA/skills"
+    cp -r "$REPO/skills/"* "$DATA/skills/"
+    echo "[agent] skills added"
+fi
+
+# NOTE: .env is intentionally NOT copied from the shared repo. Each agent has its
+# OWN .env (own bot token + keys), created by `agent.sh new` in its data dir.
+# Seeding a shared .env here would give every agent the same Telegram bot.
+
+touch "$DATA/.agent-init-done"
+echo "[agent] config seeded"
