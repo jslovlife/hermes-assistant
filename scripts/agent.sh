@@ -77,32 +77,73 @@ valid_name() {
 }
 
 # Resolve an agent's data dir, honoring a per-agent agent.conf override.
+# Falls back to the default agent.sh layout (~/hermes-agents) and then the
+# legacy tenant.sh layout (~/hermes-tenants) so old tenants stay manageable.
 #   resolve_data <name>  -> echoes the absolute data dir path
 resolve_data() {
   local name="$1"
   local conf="$AGENTS_HOME/$name/agent.conf"
-  local datadir="$AGENTS_HOME/$name/data"
+  local datadir=""
   if [ -f "$conf" ]; then
     unset AGENT_DATA
     . "$conf"
-    datadir="${AGENT_DATA:-$datadir}"
+    datadir="${AGENT_DATA:-}"
   fi
-  echo "$datadir"
+  if [ -z "$datadir" ] && [ -d "$AGENTS_HOME/$name/data" ]; then
+    datadir="$AGENTS_HOME/$name/data"
+  fi
+  if [ -z "$datadir" ] && [ -d "$HOME/hermes-tenants/$name/data" ]; then
+    datadir="$HOME/hermes-tenants/$name/data"
+  fi
+  echo "${datadir:-$AGENTS_HOME/$name/data}"
+}
+
+# Resolve an agent's workspace dir (same override + layout fallbacks as data).
+resolve_workspace() {
+  local name="$1"
+  local conf="$AGENTS_HOME/$name/agent.conf"
+  local ws=""
+  if [ -f "$conf" ]; then
+    unset AGENT_WORKSPACES
+    . "$conf"
+    ws="${AGENT_WORKSPACES:-}"
+  fi
+  if [ -z "$ws" ] && [ -d "$AGENTS_HOME/$name/workspaces" ]; then
+    ws="$AGENTS_HOME/$name/workspaces"
+  fi
+  if [ -z "$ws" ] && [ -d "$HOME/hermes-tenants/$name/workspaces" ]; then
+    ws="$HOME/hermes-tenants/$name/workspaces"
+  fi
+  echo "${ws:-$AGENTS_HOME/$name/workspaces}"
 }
 
 cmd_list() {
-  echo "Agents (default data under $AGENTS_HOME):"
+  echo "Agents:"
   local found=0
+  # New agent.sh layout
   for d in "$AGENTS_HOME"/*/; do
     [ -d "$d" ] || continue
     local n; n="$(basename "$d")"
-    local conf="$d/agent.conf" datadir="$AGENTS_HOME/$n/data"
-    [ -f "$conf" ] && { unset AGENT_DATA; . "$conf"; datadir="${AGENT_DATA:-$datadir}"; }
+    local datadir; datadir="$(resolve_data "$n")"
     found=1
     if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$n"; then
       echo "  $n  -> RUNNING  data=$datadir"
     else
       echo "  $n  -> stopped  data=$datadir"
+    fi
+  done
+  # Legacy tenant.sh layout
+  for d in "$HOME/hermes-tenants"/*/; do
+    [ -d "$d" ] || continue
+    local n; n="$(basename "$d")"
+    [ -d "$AGENTS_HOME/$n" ] && continue   # already listed above
+    local datadir="$d/data"
+    [ -d "$datadir" ] || continue
+    found=1
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$n"; then
+      echo "  $n  -> RUNNING  data=$datadir (legacy)"
+    else
+      echo "  $n  -> stopped  data=$datadir (legacy)"
     fi
   done
   [ "$found" = 0 ] && echo "  (none yet — run: scripts/agent.sh new <name>)"
@@ -132,9 +173,9 @@ cmd_new() {
 cmd_up() {
   local name="$1"
   valid_name "$name"
-  local data="$AGENTS_HOME/$name/data"
+  local data; data="$(resolve_data "$name")"
   if [ ! -d "$data" ]; then
-    echo "Agent '$name' not found. Create it first: scripts/agent.sh new $name"
+    echo "Agent '$name' not found (no data at $data). Create it first: scripts/agent.sh new $name"
     exit 1
   fi
   ensure_image
@@ -176,7 +217,7 @@ cmd_rename() {
 
   local olddir oldws newdir newws
   olddir="$(resolve_data "$old")"
-  oldws="$AGENTS_HOME/$old/workspaces"
+  oldws="$(resolve_workspace "$old")"
 
   # New data dir = same path with the "/<old>/" segment renamed to "/<new>/".
   newdir="${olddir//\/$old\//\/$new\/}"
@@ -255,9 +296,7 @@ case "$CMD" in
   config)
     [ $# -ge 2 ] || { echo "usage: agent.sh config <name>"; exit 1; }
     valid_name "$2"
-    conf="$AGENTS_HOME/$2/agent.conf"; datadir="$AGENTS_HOME/$2/data"
-    [ -f "$conf" ] && { unset AGENT_DATA; . "$conf"; datadir="${AGENT_DATA:-$datadir}"; }
-    echo "$datadir/.env"
+    echo "$(resolve_data "$2")/.env"
     ;;
   *)
     echo "usage: agent.sh {list|new|up|down|restart|logs|status|config|restore|rename}"
