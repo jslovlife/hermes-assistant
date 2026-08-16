@@ -291,7 +291,7 @@ Containers are disposable. **Data dirs are not.**
 | Bot never replies | `doctor`; numeric allowlist; unique token; `logs` |
 | Telegram hang on Docker Desktop | Keep `force_ipv4` and `HERMES_TELEGRAM_*` timeouts from `.env.example` |
 | `empty section between colons` | Volume env not set — always use `agent.sh up`, not raw compose |
-| Broken pipe on DeepSeek stream | Packs ship `gateway.streaming: false` |
+| Broken pipe on DeepSeek stream | Raise `agent.api_max_retries` / `auxiliary.transient_retries`; keep a fallback provider. See docs/LESSONS.md (NOT `gateway.streaming: false` — that key only affects rendering). |
 | 409 Conflict | Two processes polling the same Telegram token |
 | Pack changed but personality did not | `apply` then `restart` |
 | Admin cannot see CS reports | Role was created with `company role` (not plain `new`); recreate container after compose change |

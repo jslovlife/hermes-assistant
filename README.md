@@ -51,3 +51,11 @@ Host root can still read volumes (normal SaaS). Paying tenants should use their 
 Telegram (default), Slack (Socket Mode, good for office POS/HRMS), WhatsApp Cloud API (official CS, needs a public webhook). See the user guide.
 
 `scripts/tenant.sh` and `scripts/docker-gateway.sh` are legacy. Use `agent.sh` so you do not mix bot tokens.
+
+## Lessons
+
+Real incidents and how to avoid them — **[docs/LESSONS.md](docs/LESSONS.md)**: stuck
+fresh-session search loops in group chats, and flaky `Broken pipe` LLM-API
+connections. Every agent also inherits the `fresh-session-project-lookup` skill
+from `skills/`, so it knows not to search forever for a project it was never told
+about.
