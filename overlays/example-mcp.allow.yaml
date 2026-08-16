@@ -1,0 +1,8 @@
+# Copy onto a tenant with:
+#   scripts/agent.sh overlay mcp <name> overlays/example-mcp.allow.yaml
+# Then replace these names with the customer's real MCP tools.
+include:
+  - get_acme_order
+  - lookup_acme_customer
+deny_until_operator_yes:
+  - acme_refund

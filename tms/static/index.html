@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hermes TMS</title>
+  <style>
+    :root { color-scheme: dark; --bg:#111; --fg:#eee; --muted:#9a9a9a; --line:#2a2a2a; --acc:#6ea8fe; --ok:#7dce9a; --bad:#e07a7a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--line); }
+    h1 { font-size: 16px; font-weight: 600; margin: 0; }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .muted { color: var(--muted); }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    input, select, button, textarea { font: inherit; background: #1a1a1a; color: var(--fg); border: 1px solid var(--line); padding: 8px 10px; border-radius: 4px; }
+    button { cursor: pointer; }
+    button.primary { background: #1e2a44; border-color: #314a78; color: var(--acc); }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; }
+    .ok { color: var(--ok); }
+    .bad { color: var(--bad); }
+    .banner { border: 1px solid var(--line); padding: 10px 12px; margin-bottom: 16px; color: var(--muted); }
+    pre { white-space: pre-wrap; background: #1a1a1a; padding: 12px; max-height: 280px; overflow: auto; border: 1px solid var(--line); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Hermes tenant console</h1>
+    <div class="row">
+      <span class="muted" id="who"></span>
+      <button type="button" id="logout">Log out</button>
+    </div>
+  </header>
+  <main>
+    <div id="login">
+      <p class="banner">Operator console. Bind is localhost. This process can create and stop tenant containers — do not expose it to the internet.</p>
+      <label>Password</label>
+      <div class="row">
+        <input id="password" type="password" autocomplete="current-password" />
+        <button class="primary" type="button" id="loginBtn">Sign in</button>
+      </div>
+      <p class="muted" id="loginErr"></p>
+    </div>
+
+    <div id="app" class="hidden">
+      <p class="banner">Each tenant is one Docker container and one data directory. Applying a pack is SaaS-only — it updates SOUL, skills, and config, never <code>.env</code> or memories. Company admins set rules in chat; they cannot add skills.</p>
+      <div class="grid">
+        <section>
+          <h2>New tenant</h2>
+          <label>Name</label>
+          <input id="newName" placeholder="acme-cs" />
+          <label>Industry pack</label>
+          <select id="newPack"></select>
+          <div class="row" style="margin-top:8px">
+            <button class="primary" type="button" id="createBtn">Create</button>
+          </div>
+        </section>
+        <section>
+          <h2>Company (multi-role)</h2>
+          <p class="muted">One client, several bots. Shared rules + reports only — not memory. Admin pack is the boss.</p>
+          <label>Company</label>
+          <input id="coName" placeholder="acme" />
+          <div class="row" style="margin-top:8px">
+            <button class="primary" type="button" id="coCreate">New company</button>
+          </div>
+          <label style="margin-top:12px">Add role (creates acme-cs, acme-marketing, acme-admin)</label>
+          <div class="row">
+            <select id="coRole">
+              <option value="admin">admin (boss)</option>
+              <option value="cs">cs</option>
+              <option value="marketing">marketing</option>
+            </select>
+            <button type="button" id="coRoleBtn">Add role</button>
+          </div>
+          <pre id="coList" class="muted" style="margin-top:12px">(no companies yet)</pre>
+        </section>
+        <section>
+          <h2>Set secrets (selected tenant)</h2>
+          <p class="muted">Values are written to that tenant’s <code>.env</code> only. Empty fields are skipped.</p>
+          <label>DEEPSEEK_API_KEY (thinking)</label>
+          <input id="k_DEEPSEEK_API_KEY" type="password" />
+          <label>OPENCODE_GO_API_KEY (coding only)</label>
+          <input id="k_OPENCODE_GO_API_KEY" type="password" />
+          <label>TELEGRAM_BOT_TOKEN</label>
+          <input id="k_TELEGRAM_BOT_TOKEN" type="password" />
+          <label>TELEGRAM_ALLOWED_USERS</label>
+          <input id="k_TELEGRAM_ALLOWED_USERS" placeholder="numeric Telegram user id" />
+          <label>SLACK_BOT_TOKEN (optional)</label>
+          <input id="k_SLACK_BOT_TOKEN" type="password" />
+          <label>SLACK_APP_TOKEN (optional)</label>
+          <input id="k_SLACK_APP_TOKEN" type="password" />
+          <label>SLACK_ALLOWED_USERS (optional)</label>
+          <input id="k_SLACK_ALLOWED_USERS" />
+          <label>CUSTOM_MCP_URL (optional)</label>
+          <input id="k_CUSTOM_MCP_URL" />
+          <label>CUSTOM_MCP_TOKEN (optional)</label>
+          <input id="k_CUSTOM_MCP_TOKEN" type="password" />
+          <div class="row" style="margin-top:8px">
+            <button type="button" id="saveSecrets">Save secrets</button>
+          </div>
+        </section>
+      </div>
+
+      <section style="margin-top:24px">
+        <h2>Tenant overlay (SaaS only)</h2>
+        <p class="muted">Custom skills and MCP names live in <code>skills-custom/</code> and <code>mcp.allow.custom.yaml</code>. Pack apply never overwrites them. Select a tenant first.</p>
+        <p class="muted" id="ovStatus">(no tenant selected)</p>
+        <label>Skill directory on this host (must contain SKILL.md)</label>
+        <div class="row">
+          <input id="ovSkill" placeholder="/path/to/acme-orders" style="flex:1" />
+          <button type="button" id="ovAddSkill">Add skill</button>
+          <button type="button" id="ovRefresh">Refresh overlay</button>
+        </div>
+        <label style="margin-top:12px">mcp.allow.custom.yaml</label>
+        <textarea id="ovMcp" rows="8" placeholder="include:&#10;  - get_acme_order&#10;deny_until_operator_yes:&#10;  - acme_refund"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button type="button" id="ovSaveMcp">Save custom MCP allow</button>
+        </div>
+      </section>
+
+      <h2>Tenants</h2>
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Status</th><th>Company / role</th><th>Pack</th><th>Secrets</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <h2>Output</h2>
+      <pre id="out">(idle)</pre>
+    </div>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let selected = null;
+    let packs = [];
+
+    async function api(path, opts = {}) {
+      const res = await fetch(path, {
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+        ...opts,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      return data;
+    }
+
+    function showApp(on) {
+      $("login").classList.toggle("hidden", on);
+      $("app").classList.toggle("hidden", !on);
+    }
+
+    function secretFlags(s) {
+      const need = ["DEEPSEEK_API_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_ALLOWED_USERS"];
+      const ok = need.filter((k) => s && s[k]).length;
+      return `${ok}/${need.length} required`;
+    }
+
+    async function refresh() {
+      const [p, t, c] = await Promise.all([api("/api/packs"), api("/api/tenants"), api("/api/companies")]);
+      packs = p.packs || [];
+      const sel = $("newPack");
+      sel.innerHTML = packs.map((x) => `<option value="${x.id}">${x.id} — ${x.name}</option>`).join("");
+      const roleSel = $("coRole");
+      const keep = roleSel.value;
+      roleSel.innerHTML = packs.map((x) => `<option value="${x.id}">${x.id}${x.id === "admin" ? " (boss)" : ""}</option>`).join("");
+      if ([...roleSel.options].some((o) => o.value === keep)) roleSel.value = keep;
+      const cos = c.companies || [];
+      $("coList").textContent = cos.length
+        ? cos.map((co) => {
+            const roles = (co.roles || []).map((r) => `${r.role || "?"} ${r.name} (${r.status})`).join(", ");
+            return `${co.name}: ${roles || "(no roles yet)"}`;
+          }).join("\n")
+        : "(no companies yet)";
+      const body = $("tbody");
+      body.innerHTML = "";
+      for (const row of t.tenants || []) {
+        const tr = document.createElement("tr");
+        const st = row.status === "running" ? '<span class="ok">running</span>' : '<span class="bad">stopped</span>';
+        const cr = row.company ? `${row.company} / ${row.role || "—"}` : "—";
+        const ov = (row.overlay_skills || []).length ? ` +${row.overlay_skills.length} overlay` : "";
+        tr.innerHTML = `<td><button type="button" class="pick">${row.name}</button></td>
+          <td>${st}</td><td class="muted">${cr}</td><td>${row.pack || "—"}${ov}</td><td class="muted">${secretFlags(row.secrets)}</td>
+          <td class="row">
+            <button data-a="up">Start</button>
+            <button data-a="down">Stop</button>
+            <button data-a="restart">Restart</button>
+            <button data-a="apply">Apply pack</button>
+            <button data-a="doctor">Doctor</button>
+            <button data-a="logs">Logs</button>
+            <button data-a="backup">Backup</button>
+          </td>`;
+        tr.querySelector(".pick").onclick = () => { selected = row.name; $("who").textContent = "selected: " + selected; loadOverlay(selected); };
+        tr.querySelectorAll("[data-a]").forEach((btn) => {
+          btn.onclick = () => act(row.name, btn.getAttribute("data-a"));
+        });
+        body.appendChild(tr);
+      }
+    }
+
+    async function act(name, action) {
+      selected = name;
+      $("who").textContent = "selected: " + name;
+      $("out").textContent = "working…";
+      try {
+        if (action === "logs") {
+          const data = await api(`/api/tenants/${name}/logs`);
+          $("out").textContent = data.logs || "(empty)";
+          return;
+        }
+        if (action === "doctor") {
+          const data = await api(`/api/tenants/${name}/doctor`);
+          $("out").textContent = data.output || "";
+          return;
+        }
+        const payload = {};
+        if (action === "apply") {
+          const pack = $("newPack").value;
+          if (!pack) throw new Error("choose a pack");
+          payload.pack = pack;
+        }
+        const data = await api(`/api/tenants/${name}/${action}`, { method: "POST", body: JSON.stringify(payload) });
+        $("out").textContent = data.output || JSON.stringify(data, null, 2);
+        await refresh();
+      } catch (e) {
+        $("out").textContent = String(e.message || e);
+      }
+    }
+
+    $("loginBtn").onclick = async () => {
+      $("loginErr").textContent = "";
+      try {
+        await api("/api/login", { method: "POST", body: JSON.stringify({ password: $("password").value }) });
+        showApp(true);
+        await refresh();
+      } catch (e) {
+        $("loginErr").textContent = e.message;
+      }
+    };
+    $("logout").onclick = async () => { await api("/api/logout", { method: "POST", body: "{}" }); showApp(false); };
+    $("coCreate").onclick = async () => {
+      $("out").textContent = "working…";
+      try {
+        const data = await api("/api/companies", {
+          method: "POST",
+          body: JSON.stringify({ name: $("coName").value.trim() }),
+        });
+        $("out").textContent = data.output || "";
+        await refresh();
+      } catch (e) { $("out").textContent = e.message; }
+    };
+    $("coRoleBtn").onclick = async () => {
+      const company = $("coName").value.trim();
+      if (!company) { $("out").textContent = "enter a company name first"; return; }
+      $("out").textContent = "working…";
+      try {
+        const data = await api(`/api/companies/${company}/roles`, {
+          method: "POST",
+          body: JSON.stringify({ role: $("coRole").value }),
+        });
+        $("out").textContent = data.output || "";
+        selected = `${company}-${$("coRole").value}`;
+        $("who").textContent = "selected: " + selected;
+        await refresh();
+      } catch (e) { $("out").textContent = e.message; }
+    };
+    $("createBtn").onclick = async () => {
+      $("out").textContent = "working…";
+      try {
+        const data = await api("/api/tenants", {
+          method: "POST",
+          body: JSON.stringify({ name: $("newName").value.trim(), pack: $("newPack").value }),
+        });
+        $("out").textContent = data.output || "";
+        selected = $("newName").value.trim();
+        await refresh();
+      } catch (e) { $("out").textContent = e.message; }
+    };
+    async function loadOverlay(name) {
+      try {
+        const data = await api(`/api/tenants/${name}/overlay`);
+        const skills = (data.skills || []).join(", ") || "(none)";
+        $("ovStatus").textContent = `${name}: ${skills}`;
+        $("ovMcp").value = data.mcp_yaml || "";
+      } catch (e) {
+        $("ovStatus").textContent = String(e.message || e);
+      }
+    }
+
+    $("ovAddSkill").onclick = async () => {
+      if (!selected) { $("out").textContent = "select a tenant first"; return; }
+      $("out").textContent = "working…";
+      try {
+        const data = await api(`/api/tenants/${selected}/overlay/skill`, {
+          method: "POST",
+          body: JSON.stringify({ source: $("ovSkill").value.trim() }),
+        });
+        $("out").textContent = data.output || "";
+        await loadOverlay(selected);
+        await refresh();
+      } catch (e) { $("out").textContent = e.message; }
+    };
+    $("ovRefresh").onclick = async () => {
+      if (!selected) { $("out").textContent = "select a tenant first"; return; }
+      $("out").textContent = "working…";
+      try {
+        const data = await api(`/api/tenants/${selected}/overlay/refresh`, { method: "POST", body: "{}" });
+        $("out").textContent = data.output || "";
+        await loadOverlay(selected);
+      } catch (e) { $("out").textContent = e.message; }
+    };
+    $("ovSaveMcp").onclick = async () => {
+      if (!selected) { $("out").textContent = "select a tenant first"; return; }
+      $("out").textContent = "working…";
+      try {
+        const data = await api(`/api/tenants/${selected}/overlay/mcp`, {
+          method: "POST",
+          body: JSON.stringify({ yaml: $("ovMcp").value }),
+        });
+        $("out").textContent = data.output || "";
+        await loadOverlay(selected);
+      } catch (e) { $("out").textContent = e.message; }
+    };
+    $("saveSecrets").onclick = async () => {
+      if (!selected) { $("out").textContent = "select a tenant first"; return; }
+      const body = {};
+      for (const k of ["DEEPSEEK_API_KEY","OPENCODE_GO_API_KEY","TELEGRAM_BOT_TOKEN","TELEGRAM_ALLOWED_USERS","SLACK_BOT_TOKEN","SLACK_APP_TOKEN","SLACK_ALLOWED_USERS","CUSTOM_MCP_URL","CUSTOM_MCP_TOKEN"]) {
+        const v = $("k_" + k).value.trim();
+        if (v) body[k] = v;
+      }
+      $("out").textContent = "working…";
+      try {
+        const data = await api(`/api/tenants/${selected}/secrets`, { method: "POST", body: JSON.stringify(body) });
+        $("out").textContent = "updated: " + (data.updated || []).join(", ");
+        for (const el of document.querySelectorAll("input[type=password]")) el.value = "";
+        await refresh();
+      } catch (e) { $("out").textContent = e.message; }
+    };
+
+    api("/api/session").then((s) => { if (s.ok) { showApp(true); refresh(); } });
+  </script>
+</body>
+</html>

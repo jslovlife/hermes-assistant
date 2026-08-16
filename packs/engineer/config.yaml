@@ -3,8 +3,6 @@
 
 model:
   provider: deepseek
-  # Stable official ID. DeepSeek retargets this to the latest Flash checkpoint
-  # (e.g. 0731). Hermes does not auto-switch to Pro or a new family.
   default: deepseek-v4-flash
 
 network:

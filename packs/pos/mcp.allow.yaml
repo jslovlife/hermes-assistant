@@ -1,0 +1,10 @@
+include:
+  - get_stock
+  - get_order
+  - store_hours
+  - list_locations
+deny_until_operator_yes:
+  - adjust_stock
+  - void_sale
+  - set_price
+  - open_drawer

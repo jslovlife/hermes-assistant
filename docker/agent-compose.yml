@@ -25,9 +25,15 @@ services:
       - ${AGENT_WORKSPACES}:/opt/workspaces
       # Shared control-plane repo — read-only so one agent can't mutate the template
       - ${REPO_ROOT}:/opt/repo:ro
+      # Company shared rules (admin rw, other roles ro) and this role's reports
+      - ${COMPANY_RULES}:/opt/company/rules:${RULES_MODE:-ro}
+      - ${COMPANY_REPORTS}:/opt/company/reports:rw
 
-    # Hardening: resource limits, process cap, no-new-privileges.
+    # Hardening. mem_limit/cpus apply on Compose (deploy.resources is Swarm-only).
     # No docker.sock, no privileged, no host network/pid.
+    mem_limit: ${AGENT_MEM_LIMIT:-4g}
+    cpus: ${AGENT_CPU_LIMIT:-2.0}
+    pids_limit: 256
     deploy:
       resources:
         limits:
@@ -45,7 +51,7 @@ services:
       # The shared repo is always mounted here (read-only)
       - REPO_ROOT=/opt/repo
       # Allow file tools to write into runtime data and the per-agent workspace
-      - HERMES_WRITE_SAFE_ROOT=/opt/data:/opt/workspaces
+      - HERMES_WRITE_SAFE_ROOT=${HERMES_WRITE_SAFE_ROOT:-/opt/data:/opt/workspaces}
       # Optional outbound proxy (set in the agent's .env)
       - HTTP_PROXY=${HTTP_PROXY:-}
       - HTTPS_PROXY=${HTTPS_PROXY:-}

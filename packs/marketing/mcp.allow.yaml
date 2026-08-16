@@ -1,0 +1,4 @@
+include: []
+deny_until_operator_yes:
+  - buy_ads
+  - send_blast

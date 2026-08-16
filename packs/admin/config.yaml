@@ -3,8 +3,6 @@
 
 model:
   provider: deepseek
-  # Stable official ID. DeepSeek retargets this to the latest Flash checkpoint
-  # (e.g. 0731). Hermes does not auto-switch to Pro or a new family.
   default: deepseek-v4-flash
 
 network:
@@ -58,11 +56,6 @@ stt:
   echo_transcripts: true
   provider: local
 
-# Coding worker only. Chat/planning must not use this lane.
-delegation:
-  max_concurrent_children: 2
-  provider: opencode-go
-  model: deepseek-v4-pro
 
 gateway:
   streaming: false

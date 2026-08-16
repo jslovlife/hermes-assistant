@@ -47,7 +47,7 @@ resolve_tenant() {
   export TENANT_IMAGE="${TENANT_IMAGE:-${name}-assistant}"
   export TENANT_MEM_LIMIT="${TENANT_MEM_LIMIT:-4g}"
   export TENANT_CPU_LIMIT="${TENANT_CPU_LIMIT:-2}"
-  export REPO_URL="${REPO_URL:-git@github.com:jslovlife/hermes-assistant.git}"
+  export REPO_URL="${REPO_URL:-https://github.com/jslovlife/hermes-assistant.git}"
   export HERMES_HOME="$TENANT_DATA"
   export HERMES_REAL_HOME="${HERMES_REAL_HOME:-$HOME}"
   export JSEC_ROOT="$TENANT_ROOT"
@@ -66,9 +66,12 @@ ensure_tenant_repo() {
   git clone "$REPO_URL" "$TENANT_ROOT"
   # Seed the tenant's .env from the template example if none exists.
   if [ ! -f "$TENANT_DATA/.env" ]; then
-    cp "$ROOT/tenants/jojopa/.env.example" "$TENANT_DATA/.env" 2>/dev/null || \
-      cp "$ROOT/.env.example" "$TENANT_DATA/.env"
-    echo "[tenant] seeded $TENANT_DATA/.env — FILL IN the bot token before first start."
+    if cp "$ROOT/tenants/jojopa/.env.example" "$TENANT_DATA/.env" 2>/dev/null || \
+       cp "$ROOT/.env.example" "$TENANT_DATA/.env" 2>/dev/null; then
+      echo "[tenant] seeded $TENANT_DATA/.env — FILL IN the bot token before first start."
+    else
+      echo "[tenant] WARN: no .env.example found — create $TENANT_DATA/.env manually."
+    fi
   fi
 }
 
@@ -94,11 +97,11 @@ cmd_list() {
   done
   echo
   echo "Running containers:"
-  docker ps --filter "name=-gateway" --format '  {{.Names}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null || true
+  docker ps --filter "name=.*-gateway" --format '  {{.Names}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null || true
 }
 
 cmd_new() {
-  local name="$1" giturl="${2:-git@github.com:jslovlife/hermes-assistant.git}"
+  local name="$1" giturl="${2:-https://github.com/jslovlife/hermes-assistant.git}"
   local repo="$DEFAULT_TENANTS_HOME/$name/repo"
   local data="$DEFAULT_TENANTS_HOME/$name/data"
   if [ -d "$repo" ]; then echo "Error: tenant '$name' already exists at $repo"; exit 1; fi
@@ -106,8 +109,10 @@ cmd_new() {
   echo "Cloning template repo -> $repo ..."
   git clone "$giturl" "$repo"
   # Seed the tenant's .env from the template example so the user can fill it in.
-  cp "$ROOT/tenants/jojopa/.env.example" "$data/.env" 2>/dev/null || \
-    cp "$ROOT/.env.example" "$data/.env"
+  if ! cp "$ROOT/tenants/jojopa/.env.example" "$data/.env" 2>/dev/null && \
+     ! cp "$ROOT/.env.example" "$data/.env" 2>/dev/null; then
+    echo "[tenant] WARN: no .env.example found — create $data/.env manually."
+  fi
   echo "Tenant '$name' created."
   echo "  Next: edit $data/.env and fill in TELEGRAM_BOT_TOKEN + TELEGRAM_ALLOWED_USERS"
   echo "  Then: scripts/tenant.sh up $name"
@@ -128,11 +133,6 @@ cmd_up() {
   compose_run up -d
   echo "Tenant '$name' starting. Logs: scripts/tenant.sh logs $name"
 }
-
-for cmd in down restart logs status; do
-  # trivial pass-through commands after resolving the tenant
-  :
-done
 
 CMD="${1:-list}"
 case "$CMD" in
