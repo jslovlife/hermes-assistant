@@ -4,7 +4,7 @@ Multi-tenant messaging agent: **Hermes in Docker**, OpenCode Go (DeepSeek Flash 
 
 **Host needs Docker + git.** No Hermes/Node/Python install for the bot. Optional Python 3 for the TMS console.
 
-**Docs:** [User guide](docs/USER_GUIDE.md) · [Architecture](docs/ARCHITECTURE.md) · [TMS](docs/TMS.md)
+**Docs:** [User guide](docs/USER_GUIDE.md) · [Architecture](docs/ARCHITECTURE.md) · [TMS](docs/TMS.md) · [Slack setup](docs/SLACK_SETUP.md)
 
 ## Quick start
 
