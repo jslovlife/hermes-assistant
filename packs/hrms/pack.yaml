@@ -1,0 +1,9 @@
+id: hrms
+name: HRMS
+summary: Leave balances, handbook Q&A, HR tickets. Never touch payroll or access provisioning.
+coding: false
+model: deepseek-v4-flash
+required_env:
+  - DEEPSEEK_API_KEY
+  - TELEGRAM_BOT_TOKEN
+  - TELEGRAM_ALLOWED_USERS

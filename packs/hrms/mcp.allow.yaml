@@ -1,0 +1,10 @@
+include:
+  - get_leave_balance
+  - create_hr_ticket
+  - get_hr_ticket
+  - handbook_search
+deny_until_operator_yes:
+  - approve_leave
+  - run_payroll
+  - provision_access
+  - send_offer

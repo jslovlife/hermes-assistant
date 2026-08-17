@@ -31,6 +31,8 @@ if [ -f "$ENV" ]; then
   done
   # OpenRouter is optional (only needed as a per-token overflow fallback).
   grep -q "^OPENROUTER_API_KEY=.+" "$ENV" && ok "OPENROUTER_API_KEY set (optional)" || warn "OPENROUTER_API_KEY not set (optional)"
+  # GitHub token optional (lets the assistant create/push repos via gh/API).
+  grep -q "^GITHUB_TOKEN=.+" "$ENV" && ok "GITHUB_TOKEN set (optional)" || warn "GITHUB_TOKEN not set (optional)"
 else
   bad ".env not found at $ENV"
 fi

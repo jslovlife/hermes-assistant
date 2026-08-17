@@ -10,3 +10,8 @@ logs/
 !.env.example
 *.bak.*
 node_modules/
+
+# TMS operator password — never commit. Used only by scripts/tms.sh
+tms/.env
+.tms-password
+

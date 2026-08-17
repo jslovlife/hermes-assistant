@@ -1,0 +1,74 @@
+#!/command/with-contenv sh
+# agent seeder — copies pack or repo config into /opt/data on first boot.
+# Never overwrites .env. Guarded by .agent-init-done.
+set -eu
+
+REPO="${REPO_ROOT:-/opt/repo}"
+DATA="${HERMES_HOME:-/opt/data}"
+
+if [ -f "$DATA/.agent-init-done" ]; then
+    exit 0
+fi
+
+if [ ! -d "$REPO/config" ]; then
+    echo "[agent] ERROR: $REPO/config not found — is the repo mounted at /opt/repo?" >&2
+    exit 1
+fi
+
+PACK=""
+if [ -f "$DATA/.pack" ]; then
+    PACK="$(tr -d '[:space:]' < "$DATA/.pack")"
+fi
+
+seed_from() {
+    src="$1"
+    echo "[agent] first boot — seeding from $src"
+    [ -f "$src/SOUL.md" ] && cp "$src/SOUL.md" "$DATA/SOUL.md"
+    if [ -f "$src/config.yaml" ]; then
+        cp "$src/config.yaml" "$DATA/config.yaml"
+    elif [ -f "$src/hermes.config.yaml" ]; then
+        cp "$src/hermes.config.yaml" "$DATA/config.yaml"
+    fi
+    if [ -f "$src/mcp.allow.yaml" ]; then
+        cp "$src/mcp.allow.yaml" "$DATA/mcp.allow.pack.yaml"
+    fi
+    if [ -d "$src/skills" ]; then
+        mkdir -p "$DATA/skills"
+        cp -R "$src/skills/." "$DATA/skills/"
+        echo "[agent] skills added"
+    fi
+}
+
+if [ -n "$PACK" ] && [ -d "$REPO/packs/$PACK" ]; then
+    seed_from "$REPO/packs/$PACK"
+elif [ -f "$DATA/config.yaml" ] && [ -f "$DATA/SOUL.md" ]; then
+    echo "[agent] first boot — pack already applied on host; not overwriting SOUL/config"
+    mkdir -p "$DATA/skills"
+else
+    seed_from "$REPO/config"
+    if [ -d "$REPO/skills" ]; then
+        mkdir -p "$DATA/skills"
+        cp -R "$REPO/skills/." "$DATA/skills/"
+        echo "[agent] repo skills added"
+    fi
+fi
+
+# Re-apply tenant overlay (skills-custom + mcp.allow.custom.yaml). Never wipes those.
+if [ -f "$REPO/scripts/overlay-refresh.sh" ]; then
+    pack_skills=""
+    pack_mcp=""
+    if [ -n "$PACK" ] && [ -d "$REPO/packs/$PACK/skills" ]; then
+        pack_skills="$REPO/packs/$PACK/skills"
+    fi
+    if [ -f "$DATA/mcp.allow.pack.yaml" ]; then
+        pack_mcp="$DATA/mcp.allow.pack.yaml"
+    elif [ -n "$PACK" ] && [ -f "$REPO/packs/$PACK/mcp.allow.yaml" ]; then
+        pack_mcp="$REPO/packs/$PACK/mcp.allow.yaml"
+    fi
+    sh "$REPO/scripts/overlay-refresh.sh" "$DATA" "$pack_skills" "$pack_mcp"
+fi
+
+# .env is never copied from the shared repo.
+
+touch "$DATA/.agent-init-done"
+echo "[agent] config seeded"

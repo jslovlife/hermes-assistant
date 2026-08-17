@@ -1,0 +1,9 @@
+id: cs
+name: Customer service
+summary: Answer FAQs, look up orders/tickets via MCP, escalate to a human. No coding.
+coding: false
+model: deepseek-v4-flash
+required_env:
+  - DEEPSEEK_API_KEY
+  - TELEGRAM_BOT_TOKEN
+  - TELEGRAM_ALLOWED_USERS

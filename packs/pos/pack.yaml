@@ -1,0 +1,9 @@
+id: pos
+name: Point of sale
+summary: Store hours, stock and order lookups for retail staff. No price or inventory writes without yes.
+coding: false
+model: deepseek-v4-flash
+required_env:
+  - DEEPSEEK_API_KEY
+  - TELEGRAM_BOT_TOKEN
+  - TELEGRAM_ALLOWED_USERS

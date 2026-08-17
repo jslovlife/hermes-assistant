@@ -1,0 +1,63 @@
+# Run one Hermes agent inside Docker. Manage via: scripts/agent.sh {new|up|down|restart|logs|status|list}
+#
+# ONE shared control-plane clone (mounted read-only at /opt/repo) feeds many
+# independent agents. Each agent = its OWN:
+#   - data dir      (sessions, memories, .env, skills, logs) -> /opt/data
+#   - workspace dir (per-agent project files)                -> /opt/workspaces
+#   - container name and its own bot token
+# Agents share the same built image — no per-agent clone or rebuild.
+#
+# All container paths are neutral (no tenant-specific branding).
+
+services:
+  gateway:
+    build:
+      context: ${REPO_ROOT:-.}
+      dockerfile: docker/Dockerfile
+    image: ${AGENT_IMAGE:-hermes-agent:assistant}
+    container_name: ${AGENT_NAME:-hermes-agent}
+    restart: unless-stopped
+
+    volumes:
+      # Per-agent runtime data (sessions, memories, .env, skills, logs)
+      - ${AGENT_DATA}:/opt/data
+      # Per-agent workspace (project files the agent builds)
+      - ${AGENT_WORKSPACES}:/opt/workspaces
+      # Shared control-plane repo — read-only so one agent can't mutate the template
+      - ${REPO_ROOT}:/opt/repo:ro
+      # Company shared rules (admin rw, other roles ro) and this role's reports
+      - ${COMPANY_RULES}:/opt/company/rules:${RULES_MODE:-ro}
+      - ${COMPANY_REPORTS}:/opt/company/reports:rw
+
+    # Hardening. mem_limit/cpus apply on Compose (deploy.resources is Swarm-only).
+    # No docker.sock, no privileged, no host network/pid.
+    mem_limit: ${AGENT_MEM_LIMIT:-4g}
+    cpus: ${AGENT_CPU_LIMIT:-2.0}
+    pids_limit: 256
+    deploy:
+      resources:
+        limits:
+          memory: ${AGENT_MEM_LIMIT:-4g}
+          cpus: '${AGENT_CPU_LIMIT:-2}'
+          pids: 256
+    security_opt:
+      - no-new-privileges:true
+
+    environment:
+      # Remap the container user to the host owner
+      - HERMES_UID=${HERMES_UID:-$(id -u)}
+      - HERMES_GID=${HERMES_GID:-$(id -g)}
+      - HERMES_REAL_HOME=${HERMES_REAL_HOME:-$HOME}
+      # The shared repo is always mounted here (read-only)
+      - REPO_ROOT=/opt/repo
+      # Allow file tools to write into runtime data and the per-agent workspace
+      - HERMES_WRITE_SAFE_ROOT=${HERMES_WRITE_SAFE_ROOT:-/opt/data:/opt/workspaces}
+      # Optional outbound proxy (set in the agent's .env)
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - http_proxy=${HTTP_PROXY:-}
+      - https_proxy=${HTTPS_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1,::1,host.docker.internal}
+      - no_proxy=${NO_PROXY:-localhost,127.0.0.1,::1,host.docker.internal}
+
+    command: ["gateway", "run"]

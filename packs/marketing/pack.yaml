@@ -1,0 +1,9 @@
+id: marketing
+name: Marketing
+summary: Campaign copy, channel ideas, and weekly activity reports. No billing or skill edits.
+coding: false
+model: deepseek-v4-flash
+required_env:
+  - DEEPSEEK_API_KEY
+  - TELEGRAM_BOT_TOKEN
+  - TELEGRAM_ALLOWED_USERS

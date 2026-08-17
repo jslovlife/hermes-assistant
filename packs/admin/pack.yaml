@@ -1,0 +1,9 @@
+id: admin
+name: Company admin
+summary: Boss role — set company/department rules and read CS/marketing reports. Cannot edit SaaS skills.
+coding: false
+model: deepseek-v4-flash
+required_env:
+  - DEEPSEEK_API_KEY
+  - TELEGRAM_BOT_TOKEN
+  - TELEGRAM_ALLOWED_USERS

@@ -1,0 +1,17 @@
+# Catalog of MCP tools this pack may use. Operator must install the matching
+# server; Hermes tools.include should whitelist only these names.
+# Writes stay gated in SOUL even if the tool exists.
+
+include:
+  - lookup_customer
+  - get_order
+  - order_history
+  - get_ticket
+  - list_tickets
+  - create_ticket
+  - update_ticket
+  - escalate_ticket
+deny_until_operator_yes:
+  - refund
+  - reset_state
+  - resolve_ticket

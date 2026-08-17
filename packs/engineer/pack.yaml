@@ -1,0 +1,10 @@
+id: engineer
+name: Software engineering
+summary: Plan on Telegram/Slack, delegate coding, gate production deploys.
+coding: true
+model: deepseek-v4-flash
+required_env:
+  - DEEPSEEK_API_KEY
+  - OPENCODE_GO_API_KEY
+  - TELEGRAM_BOT_TOKEN
+  - TELEGRAM_ALLOWED_USERS

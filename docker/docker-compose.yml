@@ -1,24 +1,30 @@
-# Run the Hermes gateway inside Docker (zero host deps besides Docker + git).
-# Manage via: scripts/docker-gateway.sh {up|down|restart|logs|status|build}
-# Image builds from the jsec repo Dockerfile (FROM hermes-agent:base + pi-agent).
-# hermes-agent:base is pulled once from Docker Hub by docker-gateway.sh and cached.
+# Run a Hermes gateway inside Docker (zero host deps besides Docker + git).
+# Manage via: scripts/tenant.sh {up|down|restart|logs|status|build} <tenant>
+#
+# Multi-tenant: each tenant is an isolated Hermes instance with its OWN:
+#   - data dir   (sessions, memories, .env, skills, logs)  -> mounted at /opt/data
+#   - repo dir   (config/SOUL/.env source, read-write)     -> mounted at /opt/jsec
+#   - container name and image tag
+# A tenant is chosen via the TENANT env var (set by scripts/tenant.sh).
+# Isolation between tenants is complete: separate .env, separate state.db,
+# separate memory/skills, separate bot token. No shared state.
 
 services:
   gateway:
     build:
-      context: .
+      context: ${JSEC_ROOT:-.}
       dockerfile: docker/Dockerfile
-    image: jsec-assistant:latest
-    container_name: hermes-gateway
+    image: ${TENANT_IMAGE:-jsec-assistant}:latest
+    container_name: ${TENANT_NAME:-hermes-gateway}
     restart: unless-stopped
 
     # No network_mode: host — Docker Desktop on macOS has limited support for it,
     # and Telegram long-polling is outbound-only, so bridge networking works.
     volumes:
-      # Persistent runtime data (sessions, memories, .env, skills, logs)
-      - ${HERMES_HOME:-$HOME/.hermes}:/opt/data
-      # Repo mount (config/soul/skills/.env source) — read-write
-      - ${JSEC_ROOT:-$PWD}:/opt/jsec
+      # Tenant runtime data (sessions, memories, .env, skills, logs)
+      - ${TENANT_DATA:-$HOME/.hermes}:/opt/data
+      # Tenant repo (config/soul/skills/.env source) — read-write
+      - ${TENANT_ROOT:-${JSEC_ROOT:-.}}:/opt/jsec
 
     # No docker.sock, no privileged, no host network/pid — the container can
     # only reach the two mounted dirs (~/.hermes and the repo) plus outbound net.
@@ -27,8 +33,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4g
-          cpus: '2'
+          memory: ${TENANT_MEM_LIMIT:-4g}
+          cpus: '${TENANT_CPU_LIMIT:-2}'
           pids: 256
     security_opt:
       - no-new-privileges:true
