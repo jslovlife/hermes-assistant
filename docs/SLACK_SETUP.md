@@ -33,10 +33,25 @@
    - `channels:history` — 读公开频道历史
    - `groups:history` — 读私群历史
    - `im:history` — 读私聊历史
+   - `mpim:history` — 读多人私聊历史（**群聊必须**）
+   - `mpim:read` — 读多人私聊基本信息（**群聊必须**）
    - `app_mentions:read` — 接收 @提及
    - （可选）`reactions:write` — 加表情
 3. 点上方 **Install to Workspace** → **Allow** 授权
 4. 得到 **Bot User OAuth Token（`xoxb-...`）**
+
+### 4b. 配置事件订阅（⚠️ 必做，否则 bot 收不到消息）
+1. 左侧菜单 → **Event Subscriptions** → 打开 **Enable Events**
+2. 在 **Subscribe to bot events** → **Add Bot User Event**，添加：
+   - `message.channels` — 公开频道消息
+   - `message.groups` — 私群消息
+   - `message.im` — 私聊消息
+   - `message.mpim` — **多人私聊消息（群聊必须）**
+   - `app_mention` — @提及
+3. 点 **Save Changes**
+4. **改过 scope 或事件后必须 Reinstall**：OAuth & Permissions → **Reinstall to Workspace**
+
+> ⚠️ 没有事件订阅，bot **收不到任何消息**（日志里看不到 inbound message）。这是最常见的"bot 没反应"原因。
 
 ### 5.（可选）允许任意用户触发
 默认只响应白名单用户。若你想让所有成员都能用（内部工具场景），可忽略；否则保留白名单即可。
@@ -95,6 +110,20 @@ grep -iE "slack" ~/.hermes/logs/gateway.log
 在 Slack 里：
 - **私聊**：直接给 bot 发消息
 - **频道**：把 bot 加进频道，然后 **@NewMa** 触发
+
+## 三.b 让指定频道免 @（可选）
+
+默认：**公开频道 / 私群必须 @bot 才回复**；私聊 / 多人私聊**不用 @**。
+
+若想让**特定频道**不用 @ 就自动回复，用 `free_response_channels`：
+
+1. 拿到频道 ID（`C...` 开头）：频道名 → 右键 → Copy link → URL 里的 `C0BQR2M3D42`；或发一条消息后 `grep 'slack:group' ~/.hermes/sessions/sessions.json`
+2. 设置配置：
+   ```bash
+   hermes config set platforms.slack.extra.free_response_channels C0BQR2M3D42
+   ```
+   多个用逗号分隔：`hermes config set platforms.slack.extra.free_response_channels "C1,C2"`
+3. 重启 gateway 生效（见第三节）
 
 ## 四、常见问题
 
