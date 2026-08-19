@@ -1,0 +1,9 @@
+id: qa
+name: QA / Test engineering
+summary: Test strategy, test automation, defect reporting, and release gates.
+coding: false
+model: deepseek-v4-flash
+required_env:
+  - DEEPSEEK_API_KEY
+  - TELEGRAM_BOT_TOKEN
+  - TELEGRAM_ALLOWED_USERS

@@ -1,0 +1,76 @@
+# Hermes profile — thinking on official DeepSeek PAYG.
+# OpenRouter is not used (do not set OPENROUTER_API_KEY).
+
+model:
+  provider: deepseek
+  default: deepseek-v4-flash
+
+network:
+  force_ipv4: true
+
+agent:
+  reasoning_effort: low
+
+fallback_providers:
+  - provider: deepseek
+    model: deepseek-v4-flash
+
+auxiliary:
+  free_only: true
+  compression:
+    provider: deepseek
+    model: deepseek-v4-flash
+  background_review:
+    provider: deepseek
+    model: deepseek-v4-flash
+  title_generation:
+    enabled: false
+    provider: deepseek
+    model: deepseek-v4-flash
+
+terminal:
+  backend: local
+  cwd: "/opt/workspaces"
+  timeout: 300
+  home_mode: auto
+
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  write_approval: true
+
+skills:
+  write_approval: true
+
+display:
+  tool_progress: new
+  show_reasoning: false
+  platforms:
+    telegram:
+      tool_progress: new
+      notifications: important
+
+stt:
+  enabled: true
+  echo_transcripts: true
+  provider: local
+
+gateway:
+  streaming: false
+
+platforms:
+  telegram:
+    extra:
+      status_indicator: true
+      guest_mode: true
+      require_mention: false
+      command_menu:
+        max_commands: 40
+        priority_mode: prepend
+        priority:
+          - help
+          - status
+          - topic
+          - learn
+          - memory
+          - skills

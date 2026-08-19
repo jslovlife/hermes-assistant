@@ -1,0 +1,9 @@
+id: devops
+name: DevOps / SRE
+summary: Deploy, monitor, and run infrastructure behind gates (CI/CD, containers, incidents).
+coding: false
+model: deepseek-v4-flash
+required_env:
+  - DEEPSEEK_API_KEY
+  - TELEGRAM_BOT_TOKEN
+  - TELEGRAM_ALLOWED_USERS

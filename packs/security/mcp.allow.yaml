@@ -1,0 +1,9 @@
+include:
+  - scan_dependencies
+  - get_vulnerability
+  - list_access
+  - audit_log
+deny_until_operator_yes:
+  - revoke_access
+  - reset
+  - delete

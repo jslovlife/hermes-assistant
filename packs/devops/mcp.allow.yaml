@@ -1,0 +1,13 @@
+# Catalog of MCP tools this pack may use. Operator must install the matching
+# server; Hermes tools.include should whitelist only these names.
+
+include:
+  - list_containers
+  - get_service_status
+  - get_metrics
+  - get_logs
+deny_until_operator_yes:
+  - deploy
+  - destroy
+  - scale
+  - rollback

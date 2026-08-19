@@ -1,0 +1,8 @@
+include:
+  - list_services
+  - get_architecture
+  - get_tech_radar
+deny_until_operator_yes:
+  - migrate
+  - delete
+  - rewrite

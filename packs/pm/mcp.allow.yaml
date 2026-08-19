@@ -1,0 +1,8 @@
+include:
+  - list_tasks
+  - create_task
+  - update_task_status
+  - get_sprint
+deny_until_operator_yes:
+  - delete
+  - archive

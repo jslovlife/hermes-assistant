@@ -1,0 +1,9 @@
+id: cto
+name: CTO / Architecture
+summary: Architecture direction, technical standards, and trade-off decisions.
+coding: false
+model: deepseek-v4-flash
+required_env:
+  - DEEPSEEK_API_KEY
+  - TELEGRAM_BOT_TOKEN
+  - TELEGRAM_ALLOWED_USERS

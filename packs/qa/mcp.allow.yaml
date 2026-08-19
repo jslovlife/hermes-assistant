@@ -1,0 +1,10 @@
+include:
+  - run_tests
+  - get_coverage
+  - get_build_status
+  - list_defects
+  - create_defect
+deny_until_operator_yes:
+  - deploy
+  - push
+  - resolve_defect

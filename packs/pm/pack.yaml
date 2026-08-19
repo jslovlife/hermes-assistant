@@ -1,0 +1,9 @@
+id: pm
+name: Project manager / Scrum
+summary: Planning, backlog, risk tracking, and delivery coordination.
+coding: false
+model: deepseek-v4-flash
+required_env:
+  - DEEPSEEK_API_KEY
+  - TELEGRAM_BOT_TOKEN
+  - TELEGRAM_ALLOWED_USERS

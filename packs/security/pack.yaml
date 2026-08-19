@@ -1,0 +1,9 @@
+id: security
+name: Security engineering
+summary: Security review, vulnerability triage, least privilege, and incident handling.
+coding: false
+model: deepseek-v4-flash
+required_env:
+  - DEEPSEEK_API_KEY
+  - TELEGRAM_BOT_TOKEN
+  - TELEGRAM_ALLOWED_USERS

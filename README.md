@@ -42,6 +42,8 @@ Each agent lives under `~/hermes-agents/<name>/` (`data/` + `workspaces/`). Secr
 
 **Souls** (persona) vs **packs** (full role): `agent.sh new <name>` gives a neutral general assistant. Add `--soul engineer` for a standalone engineering persona, or a pack name (e.g. `cs`) for a full role bundle. See [`souls/README.md`](souls/README.md).
 
+**IT-team packs** (deployable, self-contained roles): `devops`, `qa`, `security`, `pm`, `cto` — each bundles a soul + domain skill + config + MCP allowlist. `./scripts/agent.sh new bot-ops devops` sets up a role in one command. Run `./scripts/agent.sh packs` to list all.
+
 ## Isolation
 
 One container, one data dir, one bot token per tenant. No Docker socket. Write access only to `/opt/data` and `/opt/workspaces`. Shared image and read-only repo template.
