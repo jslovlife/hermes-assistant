@@ -70,3 +70,39 @@ Hermes uses a keep-alive pool (`keepalive_expiry=20s` in
 ### One-line rule
 > Broken pipe in bursts = stale keep-alive reuse. Raise retries in config, keep a
 > fallback, and verify with `curl -N` before blaming the network.
+
+## 3. "PermissionError: telegram-approved.json" after container ops = root wrote the mount
+
+**Symptom:** Intermittent `Sorry, I encountered an error (PermissionError). [Errno 13]
+Permission denied: '/opt/data/platforms/pairing/telegram-approved.json'` — the operator
+gets marked unauthorized at random.
+
+**Root cause:** Classic Docker ownership flip. The pairing store files under
+`/opt/data/platforms/pairing/` get written by the **gateway process, which runs as
+`hermes`** (uid 10000 after the gosu drop). When the operator runs `docker exec -u root`
+(or `docker exec` without `-u`) and touches anything under `/opt/data` — or does the
+`docker commit` / `docker run` / container-swap dance we did — the pairing files can end
+up **owned by root**. The `hermes` gateway then cannot read them → `PermissionError` →
+the operator is silently treated as unauthorized. (The code itself flags this: see
+`gateway/pairing.py` `_load_json`, comment about the classic Docker symptom.)
+
+**Why intermittent:** It only breaks after a root write; once re-owned by `hermes` it
+works again. So it appears "sometimes," usually right after host-side container work.
+
+### How to avoid it
+- **Never write under `/opt/data` as root.** Use the hermes user:
+  ```bash
+  docker exec -u hermes agentA <command>
+  ```
+  or operate directly on the host bind-mount path (`/opt/hermes-agents/agentA/data/…`)
+  as `admin`, not root.
+- After any container/root operation, re-sync ownership if an error appears:
+  ```bash
+  chown -R hermes:hermes /opt/data/platforms
+  ```
+
+### One-line rule
+> Docker root-write on a mount flips file ownership → the hermes gateway can't read
+> pairing/approved files → random PermissionError. Always exec as `-u hermes` (or edit
+> the host mount as `admin`), never root.
+
