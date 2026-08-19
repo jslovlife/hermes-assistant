@@ -72,8 +72,12 @@ open "$(./scripts/agent.sh config my-bot)"
 #       OPENCODE_GO_API_KEY if you chose the engineer pack)
 
 # 3. Start it, then verify nothing is misconfigured:
-./scripts/agent.sh up my-bot
+./scripts/agent.sh up my-bot       # first time: pulls/builds the image, takes a few minutes
 ./scripts/agent.sh doctor my-bot     # every line should read "ok"; FAIL = fix that key
+
+# 4. Test it: message your bot on Telegram NOW.
+#    A new bot cannot send the first message — YOU must message it first
+#    (open the bot you made and send it any message). It should reply.
 ```
 
 `config` prints the `.env` path where you set:
@@ -96,6 +100,17 @@ If `doctor` reports `FAIL` for a key, get/fix that key, then `./scripts/agent.sh
 TMS_PASSWORD='choose-a-long-operator-password' ./scripts/tms.sh
 # http://127.0.0.1:8787
 ```
+
+### 1.4 First-run troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| `permission denied ... docker.sock` | Not in the `docker` group — see [0.2](#02-give-your-user-docker-permission-the-classic-permission-denied-fix) |
+| `fatal: dubious ownership` or `Unable to create .git/index.lock: Permission denied` | Repo owned by another user (e.g. root). `sudo chown -R $USER:$USER .` then it's clean |
+| `up` is slow / "pulling image" | Normal the first time — it downloads `hermes-agent:base` and builds. Wait, then re-run `up` |
+| Bot doesn't reply after `doctor` says ok | You haven't messaged it yet — **open the bot and send it the first message** (bots can't initiate) |
+| Bot ignores only me | `TELEGRAM_ALLOWED_USERS` wrong — must be your numeric ID (see [telegram.md](docs/keys/telegram.md)) |
+| Still nothing | `./scripts/agent.sh logs my-bot` — read the real error |
 
 ---
 

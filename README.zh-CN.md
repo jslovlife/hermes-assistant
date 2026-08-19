@@ -72,8 +72,12 @@ open "$(./scripts/agent.sh config my-bot)"
 #       （选了 engineer 包就还要填 OPENCODE_GO_API_KEY）
 
 # 3. 启动，然后体检：
-./scripts/agent.sh up my-bot
+./scripts/agent.sh up my-bot       # 首次会拉/构建镜像，需几分钟
 ./scripts/agent.sh doctor my-bot     # 每行都应是 "ok"；FAIL = 那个 key 没配好
+
+# 4. 测试：现在立刻在 Telegram 私聊你的 bot。
+#    新建的 bot 不会主动发第一条消息——必须由你先给它发
+#    （打开你建的 bot，随便发一句）。它应该会回复。
 ```
 
 `config` 打印的 `.env` 路径，用来填：
@@ -96,6 +100,17 @@ open "$(./scripts/agent.sh config my-bot)"
 TMS_PASSWORD='设置一个长操作者密码' ./scripts/tms.sh
 # http://127.0.0.1:8787
 ```
+
+### 1.4 首次运行排障
+
+| 症状 | 原因 / 修复 |
+|---|---|
+| `permission denied ... docker.sock` | 不在 `docker` 组——见 [0.2](#02-给当前用户-docker-权限经典的-permission-denied-修复) |
+| `fatal: dubious ownership` 或 `Unable to create .git/index.lock: Permission denied` | 仓库属主是别的用户（如 root）。`sudo chown -R $USER:$USER .` 即可 |
+| `up` 很慢 / "pulling image" | 首次正常——要下载 `hermes-agent:base` 并构建。等它，然后重跑 `up` |
+| `doctor` 全 ok 但 bot 不回 | 你还没先给它发消息——**打开 bot，先由你发第一条**（bot 不会主动开口）|
+| 只忽略我 | `TELEGRAM_ALLOWED_USERS` 填错——必须是你自己的数字 ID（见 [telegram.md](docs/keys/telegram.md)）|
+| 还是没反应 | `./scripts/agent.sh logs my-bot` —— 看真实报错 |
 
 ---
 
