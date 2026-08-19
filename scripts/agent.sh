@@ -119,6 +119,10 @@ agent_env() {
   # Per-agent overrides (used by `restore` to point an agent at existing data).
   [ -f "$conf" ] && . "$conf"
   export AGENT_NAME="$name"
+  # Give each agent its OWN compose project. Without this, every agent shares
+  # one project (named after $ROOT), so `up <name>` for a second agent recreates
+  # the SAME service and tears down the previously-running agent's container.
+  export COMPOSE_PROJECT_NAME="$name"
   export AGENT_DATA="$(sanitize_path "${AGENT_DATA:-$AGENTS_HOME/$name/data}")"
   export AGENT_WORKSPACES="$(sanitize_path "${AGENT_WORKSPACES:-$AGENTS_HOME/$name/workspaces}")"
   export REPO_ROOT="$ROOT"
