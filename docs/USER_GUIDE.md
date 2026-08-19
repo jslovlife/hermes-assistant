@@ -187,7 +187,7 @@ Admin “what did CS do?” = read those report files (skill `company-briefing`)
 If you pull seeder changes, rebuild the shared image once:
 
 ```bash
-docker compose -f docker/agent-compose.yml --project-directory . build
+docker compose -f docker/compose.yml --project-directory . build
 ```
 
 ---
@@ -310,7 +310,7 @@ scripts/tms.sh                  localhost operator console (SaaS only)
 tms/                            TMS server (Python stdlib)
 docs/ARCHITECTURE.md            system diagrams
 docs/TMS.md                     TMS operator guide
-docker/agent-compose.yml        one container per tenant
+docker/compose.yml            one container per agent
 ~/hermes-agents/<name>/data     that tenant’s memory and .env   (not in git)
 ~/hermes-agents/<name>/data/skills-custom   tenant overlay (survives apply)
 ~/hermes-agents/<name>/data/mcp.allow.custom.yaml
@@ -319,7 +319,7 @@ docker/agent-compose.yml        one container per tenant
 overlays/                       example custom skill + MCP allow (copy, then overlay add-skill)
 ```
 
-Legacy `scripts/tenant.sh` / `docker-gateway.sh` are superseded by `agent.sh`. Do not mix them on the same bot token.
+`scripts/agent.sh` is the only manager; it keeps each agent's bot token isolated in its own `.env`.
 
 ---
 

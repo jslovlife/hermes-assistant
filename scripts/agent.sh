@@ -34,10 +34,11 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-COMPOSE_FILE="$ROOT/docker/agent-compose.yml"
+COMPOSE_FILE="$ROOT/docker/compose.yml"
 AGENTS_HOME="${HERMES_AGENTS_HOME:-$HOME/hermes-agents}"
 AGENT_IMAGE="${AGENT_IMAGE:-hermes-agent:assistant}"
-REPO_URL="${REPO_URL:-https://github.com/jslovlife/hermes-assistant.git}"
+# Reserved for future use (per-repo clones). Set your own repo URL via env if needed.
+REPO_URL="${REPO_URL:-https://github.com/<your-org>/hermes-assistant.git}"
 PACKS_DIR="$ROOT/packs"
 
 # The single shared base image. Build once, reuse for every agent.
@@ -156,7 +157,7 @@ valid_name() {
 
 # Resolve an agent's data dir, honoring a per-agent agent.conf override.
 # Falls back to the default agent.sh layout (~/hermes-agents) and then the
-# legacy tenant.sh layout (~/hermes-tenants) so old tenants stay manageable.
+# legacy layout (~/hermes-tenants) so old installs stay manageable.
 #   resolve_data <name>  -> echoes the absolute data dir path
 resolve_data() {
   local name="$1"
@@ -213,7 +214,7 @@ cmd_list() {
       echo "  $n  -> stopped  pack=$pack  data=$datadir"
     fi
   done
-  # Legacy tenant.sh layout
+  # Legacy layout (~/hermes-tenants)
   for d in "$HOME/hermes-tenants"/*/; do
     [ -d "$d" ] || continue
     local n; n="$(basename "$d")"
@@ -846,7 +847,7 @@ case "$CMD" in
     echo "       scripts/agent.sh company new acme && scripts/agent.sh company role acme admin"
     echo "       scripts/agent.sh apply acme-cs pos"
     echo "       scripts/agent.sh overlay add-skill acme-cs overlays/example-http-lookup"
-    echo "       scripts/agent.sh restore newma ~/hermes-tenants/jojopa/data && scripts/agent.sh up newma"
+    echo "       scripts/agent.sh restore <name> ~/hermes-tenants/<name>/data && scripts/agent.sh up <name>"
     exit 1
     ;;
 esac

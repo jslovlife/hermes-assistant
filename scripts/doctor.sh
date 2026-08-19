@@ -17,7 +17,7 @@ else
 fi
 
 # Container
-if docker compose -f "$(dirname "$0")/../docker/docker-compose.yml" ps --status running 2>/dev/null | grep -q gateway; then
+if docker compose -f "$(dirname "$0")/../docker/compose.yml" ps --status running 2>/dev/null | grep -q gateway; then
   ok "hermes-gateway running"
 else
   bad "hermes-gateway not running"
