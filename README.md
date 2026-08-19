@@ -4,7 +4,7 @@ Multi-tenant messaging agent: **Hermes in Docker**, OpenCode Go (DeepSeek Flash 
 
 **Host needs Docker + git.** No Hermes/Node/Python install for the bot. Optional Python 3 for the TMS console.
 
-**Docs:** [User guide](docs/USER_GUIDE.md) · [Architecture](docs/ARCHITECTURE.md) · [TMS](docs/TMS.md) · [Slack setup](docs/SLACK_SETUP.md) · [Dashboard remote access](docs/DASHBOARD_REMOTE_ACCESS.md)
+**Docs:** [User guide](docs/USER_GUIDE.md) · [Architecture](docs/ARCHITECTURE.md) · [TMS](docs/TMS.md)
 
 ## Quick start
 
@@ -30,7 +30,7 @@ TMS_PASSWORD='long-operator-password' ./scripts/tms.sh
 | Command | Purpose |
 |---|---|
 | `./scripts/agent.sh packs` | List industry packs |
-| `./scripts/agent.sh new <name> [pack]` | Create a standalone tenant |
+| `./scripts/agent.sh new <name> [pack|--soul <soul>]` | Create a standalone agent; default soul is a neutral general assistant. Pick a pack (full role) or `--soul engineer` etc. |
 | `./scripts/agent.sh company new <co>` | Shared rules + reports for one client |
 | `./scripts/agent.sh company role <co> <role>` | Create `<co>-<role>` (`cs`, `marketing`, `admin`, …) |
 | `./scripts/agent.sh apply <name> <pack>` | SaaS-only: change pack; keeps `.env`, memory, and overlay |
@@ -38,7 +38,9 @@ TMS_PASSWORD='long-operator-password' ./scripts/tms.sh
 | `./scripts/agent.sh up / down / restart / logs / doctor / backup <name>` | Lifecycle |
 | `./scripts/tms.sh` | Web TMS (requires `TMS_PASSWORD`) |
 
-Each tenant lives under `~/hermes-agents/<name>/` (`data/` + `workspaces/`). Secrets stay in that tenant’s `.env` — never commit them.
+Each agent lives under `~/hermes-agents/<name>/` (`data/` + `workspaces/`). Secrets stay in that agent's `.env` — never commit them.
+
+**Souls** (persona) vs **packs** (full role): `agent.sh new <name>` gives a neutral general assistant. Add `--soul engineer` for a standalone engineering persona, or a pack name (e.g. `cs`) for a full role bundle. See [`souls/README.md`](souls/README.md).
 
 ## Isolation
 

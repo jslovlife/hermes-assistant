@@ -411,7 +411,15 @@ cmd_overlay() {
 }
 
 cmd_new() {
-  local name="$1" pack="${2:-}"
+  local name="$1" pack="" soul=""
+  shift
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --soul) soul="${2:-}"; shift 2 ;;
+      -*) echo "Unknown option: $1" >&2; exit 1 ;;
+      *) pack="${1:-}"; shift ;;
+    esac
+  done
   valid_name "$name"
   local data="$AGENTS_HOME/$name/data"
   local ws="$AGENTS_HOME/$name/workspaces"
@@ -428,13 +436,40 @@ cmd_new() {
   echo "Agent '$name' created (no clone — shares the one repo at $ROOT)."
   echo "  .env        : $data/.env"
   echo "  workspace   : $ws"
-  if [ -n "$pack" ]; then
+  if [ -n "$pack" ] && [ -n "$soul" ]; then
+    echo "  WARN: both pack and soul given — using pack (pack wins)." >&2
     cmd_apply "$name" "$pack"
+  elif [ -n "$pack" ]; then
+    cmd_apply "$name" "$pack"
+  elif [ -n "$soul" ]; then
+    cmd_apply_soul "$name" "$soul"
   else
-    echo "  Pack: (none yet — scripts/agent.sh apply $name <cs|pos|hrms|engineer|marketing|admin>)"
+    echo "  Soul: general (default) — choose one: --soul general|engineer, or a pack."
   fi
   echo "  Next: edit $data/.env → set OPENCODE_GO_API_KEY + channel tokens"
   echo "  Then: scripts/agent.sh up $name"
+}
+
+# Apply a standalone soul (persona only) to an agent's data dir.
+# Pre-seeds SOUL.md + base config + a .soul marker so the first-boot seeder
+# (docker/05-agent-config) keeps this soul and also adds base skills.
+cmd_apply_soul() {
+  local name="$1" soul="$2"
+  valid_name "$name"
+  local data; data="$(resolve_data "$name")"
+  local srcdir="$ROOT/souls/$soul"
+  if [ ! -f "$srcdir/SOUL.md" ]; then
+    echo "Error: soul '$soul' not found (expected $srcdir/SOUL.md)." >&2
+    echo "  Available souls: $(ls "$ROOT/souls" | grep -v README | tr '\n' ' ')" >&2
+    exit 1
+  fi
+  mkdir -p "$data"
+  cp "$srcdir/SOUL.md" "$data/SOUL.md"
+  if [ -f "$ROOT/config/hermes.config.yaml" ]; then
+    cp "$ROOT/config/hermes.config.yaml" "$data/config.yaml"
+  fi
+  touch "$data/.soul"
+  echo "  Soul '$soul' applied to $name."
 }
 
 cmd_doctor() {
@@ -766,8 +801,8 @@ case "$CMD" in
   list) cmd_list ;;
   packs) cmd_packs ;;
   new)
-    [ $# -ge 2 ] || { echo "usage: agent.sh new <name> [pack]"; exit 1; }
-    cmd_new "$2" "${3:-}"
+    [ $# -ge 2 ] || { echo "usage: agent.sh new <name> [pack|--soul <soul>]"; exit 1; }
+    cmd_new "$2" "${@:3}"
     ;;
   apply)
     [ $# -ge 3 ] || { echo "usage: agent.sh apply <name> <pack>"; exit 1; }
@@ -830,7 +865,8 @@ case "$CMD" in
   *)
     echo "usage: agent.sh {list|packs|new|apply|up|down|restart|logs|status|config|doctor|backup|restore|rename|company|overlay}"
     echo
-    echo "  new <name> [pack]      create an independent agent (optional industry pack)"
+    echo "  new <name> [pack|--soul <soul>]  create an independent agent; pick a pack (full role) or a soul (persona only)"
+    echo "      --soul general|engineer   pick a persona; default is 'general'. 'agent.sh packs' lists packs."
     echo "  apply <name> <pack>    copy pack SOUL/skills/config; never touches .env, memory, or overlay"
     echo "  overlay …              tenant custom skills + MCP allow (survives apply)"
     echo "  packs                  list industry packs (cs, pos, hrms, engineer, marketing, admin)"
@@ -844,6 +880,7 @@ case "$CMD" in
     echo "  backup <name>          tar the data dir (excludes caches)"
     echo
     echo "  e.g. scripts/agent.sh new acme-cs cs && scripts/agent.sh up acme-cs"
+    echo "       scripts/agent.sh new my-bot --soul engineer && scripts/agent.sh up my-bot"
     echo "       scripts/agent.sh company new acme && scripts/agent.sh company role acme admin"
     echo "       scripts/agent.sh apply acme-cs pos"
     echo "       scripts/agent.sh overlay add-skill acme-cs overlays/example-http-lookup"

@@ -42,8 +42,13 @@ seed_from() {
 if [ -n "$PACK" ] && [ -d "$REPO/packs/$PACK" ]; then
     seed_from "$REPO/packs/$PACK"
 elif [ -f "$DATA/config.yaml" ] && [ -f "$DATA/SOUL.md" ]; then
-    echo "[agent] first boot — pack already applied on host; not overwriting SOUL/config"
+    echo "[agent] first boot — config already applied on host; not overwriting SOUL/config"
     mkdir -p "$DATA/skills"
+    # A standalone soul (agent.sh new --soul <soul>) also gets the base skills.
+    if [ -f "$DATA/.soul" ] && [ -d "$REPO/skills" ]; then
+        cp -R "$REPO/skills/." "$DATA/skills/"
+        echo "[agent] base skills added (soul agent)"
+    fi
 else
     seed_from "$REPO/config"
     if [ -d "$REPO/skills" ]; then
