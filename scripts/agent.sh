@@ -146,7 +146,12 @@ agent_env() {
 }
 
 compose_run() {
-  docker compose -f "$COMPOSE_FILE" --project-directory "$ROOT" "$@"
+  # --env-file /dev/null: stop Compose from auto-loading <project-dir>/.env.
+  # Compose defaults to reading $ROOT/.env for interpolation, but that file is
+  # the repo's own (often root-owned/0600) and not readable by the operator, and
+  # all interpolation vars are already exported by agent_env(). Use an empty
+  # env file so `up`/`down`/etc never choke on the repo .env.
+  docker compose --env-file /dev/null -f "$COMPOSE_FILE" --project-directory "$ROOT" "$@"
 }
 
 valid_name() {
