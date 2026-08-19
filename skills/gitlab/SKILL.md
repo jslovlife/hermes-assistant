@@ -1,6 +1,6 @@
 ---
 name: gitlab
-description: Work with GitLab (self-hosted or gitlab.com): SSH/git auth, clone/push, merge requests via REST.
+description: "Work with GitLab (self-hosted or gitlab.com): SSH/git auth, clone/push, merge requests via REST."
 version: 1.0.0
 metadata:
   hermes:
