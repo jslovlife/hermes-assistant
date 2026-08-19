@@ -22,6 +22,7 @@
 | soul | 人格 |
 |---|---|
 | `general` | 通用助手（中立、安全、简洁）— 默认 |
+| `omni` | 全能技术助手（一顶全队：工程/DevOps/QA/安全/PM/CTO，按需加载技能）|
 | `engineer` | 软件工程 agent（规划 + pi-agent 编码 + 门禁部署）|
 | `devops` | DevOps / SRE（部署、监控、CI/CD、容器、可靠性）|
 | `qa` | 测试工程师（测试策略、自动化、缺陷、发布把关）|
@@ -29,7 +30,11 @@
 | `pm` | IT 项目经理 / Scrum（排期、协调、风险、交付）|
 | `cto` | CTO / 技术负责人（架构方向、标准、技术取舍）|
 
-> 想给一个 IT 团队配齐人格，通常：`general`（兜底）+ `engineer` + `devops` + `qa` + `security` + `pm` + `cto`。每个 agent 用 `agent.sh new <name> --soul <soul>` 选一个。
+> **两种用法：**
+> - **一个人用全能助手** → `agent.sh new <name> --soul omni`。一个 agent 顶全队，需要哪个领域就加载对应技能（见 `skills/`：devops、qa、security、pm、cto）。
+> - **组多角色团队** → 每个 agent 各配专业灵魂（`--soul engineer|devops|qa|security|pm|cto`），并行 + 隔离。
+>
+> 灵魂只定义人格；**能力在 `skills/`**（工程 + devops/qa/security/pm/cto），按需 `skill_view` 加载，不会让一个灵魂变臃肿。
 
 ## 怎么加一个 soul
 
