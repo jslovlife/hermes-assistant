@@ -6,6 +6,37 @@
 
 > **宿主机只需要 Docker + git。** bot 本身无需安装 Hermes/Node/Python。可选 Python 3 跑 TMS 控制台。
 
+## 0. 宿主机前置条件（只做一次）
+
+这些是**宿主机层面**的步骤，必须最先做。新用户通常最先卡在这里。
+
+### 0.1 安装 Docker
+
+- Linux / macOS：安装 Docker（macOS 装 Docker Desktop）。确认能用：
+  ```bash
+  docker --version
+  ```
+
+### 0.2 给当前用户 Docker 权限（经典的 "permission denied" 修复）
+
+如果遇到 `permission denied while trying to connect to the docker API at unix:///var/run/docker.sock`，说明你的用户不在 `docker` 组里：
+
+```bash
+sudo usermod -aG docker $USER   # 把自己加进 docker 组
+newgrp docker                   # 让当前 shell 生效（或注销重登）
+
+docker ps                       # 现在应能不用 sudo 运行
+```
+> `docker ps` 必须**不用 sudo** 就能跑。若仍失败，检查 socket 属组：`ls -l /var/run/docker.sock`（应为 `root:docker`）。
+
+### 0.3 确认 git
+
+```bash
+git --version
+```
+
+当 `docker ps` 不用 sudo 能跑、git 也在，就可以开始下面的快速上手了。
+
 ---
 
 ## 1. 如何开始（快速上手）

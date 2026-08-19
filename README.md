@@ -6,6 +6,37 @@ Multi-agent Hermes messaging assistant. One Docker image, many isolated agents â
 
 > **Host needs only Docker + git.** No Hermes/Node/Python install for the bots. Optional Python 3 for the TMS console.
 
+## 0. Host prerequisites (do this once)
+
+These are the **host-level** steps you must do before anything else. New users usually get stuck here first.
+
+### 0.1 Install Docker
+
+- Linux / macOS: install Docker (or Docker Desktop on macOS). Confirm it works:
+  ```bash
+  docker --version
+  ```
+
+### 0.2 Give your user Docker permission (the classic "permission denied" fix)
+
+If you get `permission denied while trying to connect to the docker API at unix:///var/run/docker.sock`, your user isn't in the `docker` group:
+
+```bash
+sudo usermod -aG docker $USER   # add yourself to the docker group
+newgrp docker                   # apply it in this shell (or log out and back in)
+
+docker ps                       # should now work WITHOUT sudo
+```
+> `docker ps` must work without `sudo`. If it still fails, check the socket group: `ls -l /var/run/docker.sock` (should be `root:docker`).
+
+### 0.3 Verify git
+
+```bash
+git --version
+```
+
+When `docker ps` runs without `sudo` and git is present, you're ready for the quick start below.
+
 ---
 
 ## 1. How to start (quick start)
