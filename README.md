@@ -10,29 +10,47 @@ Multi-agent Hermes messaging assistant. One Docker image, many isolated agents �
 
 ## 1. How to start (quick start)
 
-### 1.1 Clone and set up one agent
+### 1.0 Before you run: get your keys
+
+Each agent needs at least these **before** it can talk to you. Each has its own setup doc:
+
+| Key | Needed for | Get it from | Doc |
+|---|---|---|---|
+| `DEEPSEEK_API_KEY` | thinking/reasoning model | platform.deepseek.com | [keys/deepseek.md](docs/keys/deepseek.md) |
+| `TELEGRAM_BOT_TOKEN` | Telegram channel | @BotFather | [keys/telegram.md](docs/keys/telegram.md) |
+| `TELEGRAM_ALLOWED_USERS` | who may operate the bot | @userinfobot | [keys/telegram.md](docs/keys/telegram.md) |
+| `OPENCODE_GO_API_KEY` | coding worker (only `engineer` pack) | opencode.ai/auth | [keys/opencode-go.md](docs/keys/opencode-go.md) |
+| Slack / GitHub / TMS | optional | — | [keys/README.md](docs/keys/README.md) |
+
+> Full walkthroughs for every key: **[docs/keys/README.md](docs/keys/README.md)**. Secrets go only in `.env`, never in git or chat.
+
+### 1.1 Clone, create an agent, and configure it
 
 ```bash
 git clone <this-repo-url> assistant
 cd assistant
 
-# Create an agent. Pick a persona:
+# 1. Create an agent. Pick a persona:
 ./scripts/agent.sh new my-bot                 # neutral general assistant
 ./scripts/agent.sh new my-bot --soul engineer # standalone engineering persona
 ./scripts/agent.sh new my-bot cs              # a full role pack (customer service)
 
-# Find and edit the agent's .env (set API keys + channel token):
+# 2. Open the agent's .env and fill in the keys you got in step 1.0:
 open "$(./scripts/agent.sh config my-bot)"
+#    -> set DEEPSEEK_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USERS (and
+#       OPENCODE_GO_API_KEY if you chose the engineer pack)
 
-# Start it and check health:
+# 3. Start it, then verify nothing is misconfigured:
 ./scripts/agent.sh up my-bot
-./scripts/agent.sh doctor my-bot
+./scripts/agent.sh doctor my-bot     # every line should read "ok"; FAIL = fix that key
 ```
 
-The `.env` path (printed by `config`) is where you set:
-- `DEEPSEEK_API_KEY` — the thinking model key.
-- `TELEGRAM_BOT_TOKEN` / `TELEGRAM_ALLOWED_USERS` — the messaging channel.
-- `OPENCODE_GO_API_KEY` — only if you chose a coding pack (`engineer`).
+`config` prints the `.env` path where you set:
+- `DEEPSEEK_API_KEY` — the thinking-model key ([deepseek.md](docs/keys/deepseek.md)).
+- `TELEGRAM_BOT_TOKEN` / `TELEGRAM_ALLOWED_USERS` — the messaging channel ([telegram.md](docs/keys/telegram.md)).
+- `OPENCODE_GO_API_KEY` — only if you chose a coding pack (`engineer`) ([opencode-go.md](docs/keys/opencode-go.md)).
+
+If `doctor` reports `FAIL` for a key, get/fix that key, then `./scripts/agent.sh restart my-bot`.
 
 ### 1.2 List what's available
 

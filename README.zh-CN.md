@@ -10,29 +10,47 @@
 
 ## 1. 如何开始（快速上手）
 
-### 1.1 克隆并建一个 agent
+### 1.0 开始之前：先拿密钥
+
+每个 agent 在能跟你对话**之前**，至少需要这几项。每项都有自己的配置文档：
+
+| 密钥 | 用途 | 从哪获取 | 文档 |
+|---|---|---|---|
+| `DEEPSEEK_API_KEY` | 思考/推理模型 | platform.deepseek.com | [keys/deepseek.md](docs/keys/deepseek.md) |
+| `TELEGRAM_BOT_TOKEN` | Telegram 频道 | @BotFather | [keys/telegram.md](docs/keys/telegram.md) |
+| `TELEGRAM_ALLOWED_USERS` | 谁有权限操作 bot | @userinfobot | [keys/telegram.md](docs/keys/telegram.md) |
+| `OPENCODE_GO_API_KEY` | 编码 worker（仅 `engineer` 包）| opencode.ai/auth | [keys/opencode-go.md](docs/keys/opencode-go.md) |
+| Slack / GitHub / TMS | 可选 | — | [keys/README.md](docs/keys/README.md) |
+
+> 每个密钥的完整教程：**[docs/keys/README.md](docs/keys/README.md)**。密钥只填 `.env`，绝不进 git / 聊天。
+
+### 1.1 克隆、建 agent、并配置
 
 ```bash
 git clone <本仓库地址> assistant
 cd assistant
 
-# 建一个 agent，选人格：
+# 1. 建 agent，选人格：
 ./scripts/agent.sh new my-bot                 # 中性通用助手（默认）
 ./scripts/agent.sh new my-bot --soul engineer # 独立工程人格
 ./scripts/agent.sh new my-bot cs              # 完整角色包（客服）
 
-# 找到并编辑该 agent 的 .env（填 API key + 频道 token）：
+# 2. 打开该 agent 的 .env，填进第 1.0 步拿到的密钥：
 open "$(./scripts/agent.sh config my-bot)"
+#    -> 填 DEEPSEEK_API_KEY、TELEGRAM_BOT_TOKEN、TELEGRAM_ALLOWED_USERS
+#       （选了 engineer 包就还要填 OPENCODE_GO_API_KEY）
 
-# 启动并体检：
+# 3. 启动，然后体检：
 ./scripts/agent.sh up my-bot
-./scripts/agent.sh doctor my-bot
+./scripts/agent.sh doctor my-bot     # 每行都应是 "ok"；FAIL = 那个 key 没配好
 ```
 
 `config` 打印的 `.env` 路径，用来填：
-- `DEEPSEEK_API_KEY` —— 思考模型 key。
-- `TELEGRAM_BOT_TOKEN` / `TELEGRAM_ALLOWED_USERS` —— 消息频道。
-- `OPENCODE_GO_API_KEY` —— 仅当你选了编码类包（`engineer`）。
+- `DEEPSEEK_API_KEY` —— 思考模型 key（[deepseek.md](docs/keys/deepseek.md)）。
+- `TELEGRAM_BOT_TOKEN` / `TELEGRAM_ALLOWED_USERS` —— 消息频道（[telegram.md](docs/keys/telegram.md)）。
+- `OPENCODE_GO_API_KEY` —— 仅当你选了编码类包（`engineer`）时（[opencode-go.md](docs/keys/opencode-go.md)）。
+
+如果 `doctor` 对某个 key 报 `FAIL`，去拿/修好那个 key，然后 `./scripts/agent.sh restart my-bot`。
 
 ### 1.2 查看有哪些可用
 
