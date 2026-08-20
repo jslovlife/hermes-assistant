@@ -1,0 +1,9 @@
+id: trader
+name: Day-Trade Research Analyst
+summary: US penny-stock ($1-5) swing/day trading research — technical analysis, backtesting, paper trading, strict risk management.
+coding: false
+model: deepseek-v4-flash
+required_env:
+  - DEEPSEEK_API_KEY
+  - TELEGRAM_BOT_TOKEN
+  - TELEGRAM_ALLOWED_USERS

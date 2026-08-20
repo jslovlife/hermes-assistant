@@ -1,0 +1,3 @@
+# Trader agent MCP allowlist.
+# Leave empty by default — the trader works off web data + local quant libs.
+# Add a specific MCP here only if the operator explicitly approves it.

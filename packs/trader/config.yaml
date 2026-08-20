@@ -1,0 +1,29 @@
+# Hermes profile — thinking on official DeepSeek PAYG.
+# OpenRouter is not used (do not set OPENROUTER_API_KEY).
+
+model:
+  provider: deepseek
+  default: deepseek-v4-flash
+
+network:
+  force_ipv4: true
+
+agent:
+  reasoning_effort: low
+
+fallback_providers:
+  - provider: deepseek
+    model: deepseek-v4-flash
+
+auxiliary:
+  free_only: true
+  compression:
+    provider: deepseek
+    model: deepseek-v4-flash
+  background_review:
+    provider: deepseek
+    model: deepseek-v4-flash
+  title_generation:
+    enabled: false
+    provider: deepseek
+    model: deepseek-v4-flash
