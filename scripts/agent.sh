@@ -31,6 +31,13 @@
 #   3. edit <data>/.env, fill the bot token
 #   4. scripts/agent.sh up <name>         -> runs it in its own container
 # Repeat 2-4 for as many agents as you want. No per-agent clone, no rebuild.
+#
+# Isolation (do not regress these):
+#   - Compose --project-name is lowercase(AGENT_NAME). Never `compose down` the repo dir.
+#   - down/restart/logs/status target the container by name, so other agents stay up.
+#   - Standalone agents get private company/rules+reports. Only `company role` shares.
+#   - HERMES_UID/GID come from agent.conf / data-dir owner, not from `sudo $(id -u)`.
+#     `sudo docker` is fine. `sudo agent.sh` must not remap the gateway to root.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -54,8 +61,84 @@ ensure_image() {
   build_base
   if ! docker image inspect "$AGENT_IMAGE" >/dev/null 2>&1; then
     echo "Building $AGENT_IMAGE (one time, shared by all agents)..."
-    docker compose -f "$COMPOSE_FILE" --project-directory "$ROOT" build
+    # Isolated project so a build never touches the default repo-named project
+    # (and therefore never recreates another agent's `gateway` service).
+    compose_run build
   fi
+}
+
+# Compose project names cannot contain uppercase (agentA -> agenta).
+compose_project_name() {
+  printf '%s' "${AGENT_NAME:-hermes-agent}" | tr '[:upper:]' '[:lower:]'
+}
+
+file_uid() {
+  if stat -c '%u' "$1" >/dev/null 2>&1; then
+    stat -c '%u' "$1"
+  else
+    stat -f '%u' "$1"
+  fi
+}
+
+file_gid() {
+  if stat -c '%g' "$1" >/dev/null 2>&1; then
+    stat -c '%g' "$1"
+  else
+    stat -f '%g' "$1"
+  fi
+}
+
+container_exists() {
+  docker inspect "$1" >/dev/null 2>&1
+}
+
+container_running() {
+  [ "$(docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null || true)" = "true" ]
+}
+
+# Pin gateway remap to the volume owner. sudo $(id -u)=0 is how pairing files
+# became root-owned while the process still dropped to hermes.
+pin_hermes_ids() {
+  local data="$1"
+  local vol_uid="" vol_gid=""
+  if [ -d "$data" ]; then
+    vol_uid="$(file_uid "$data")"
+    vol_gid="$(file_gid "$data")"
+  fi
+  if [ -z "${HERMES_UID:-}" ]; then
+    HERMES_UID="${vol_uid:-$(id -u)}"
+  fi
+  if [ -z "${HERMES_GID:-}" ]; then
+    HERMES_GID="${vol_gid:-$(id -g)}"
+  fi
+  if [ "$(id -u)" = "0" ]; then
+    if [ -n "$vol_uid" ] && [ "$vol_uid" != "0" ]; then
+      if [ "$HERMES_UID" = "0" ]; then
+        echo "[agent] running as root — using data-dir owner ${vol_uid}:${vol_gid} (not UID 0)" >&2
+        HERMES_UID="$vol_uid"
+        HERMES_GID="$vol_gid"
+      fi
+    elif [ "$HERMES_UID" = "0" ]; then
+      echo "Error: agent.sh is running as root and the data dir is root-owned." >&2
+      echo "That remaps the gateway to UID 0 and breaks pairing (PermissionError)." >&2
+      echo "Fix: chown the data dir to the hermes uid, set HERMES_UID in agent.conf, and run without sudo." >&2
+      echo "sudo docker is fine; sudo agent.sh is not." >&2
+      exit 1
+    fi
+  fi
+  export HERMES_UID HERMES_GID
+}
+
+persist_uids_in_conf() {
+  local name="$1"
+  local conf="$AGENTS_HOME/$name/agent.conf"
+  [ -f "$conf" ] || return 0
+  if grep -qE '^HERMES_UID=' "$conf"; then
+    return 0
+  fi
+  {
+    printf "HERMES_UID='%s'\nHERMES_GID='%s'\n" "$HERMES_UID" "$HERMES_GID"
+  } >> "$conf"
 }
 
 # Strip accidental backslash escapes from paths (rename bug used to write \/ into names).
@@ -64,12 +147,12 @@ sanitize_path() {
   echo "$1" | sed 's/\\//g'
 }
 
-standalone_shared() {
-  mkdir -p "$AGENTS_HOME/_standalone/rules" "$AGENTS_HOME/_standalone/reports"
-  echo "$AGENTS_HOME/_standalone"
+private_company_dir() {
+  echo "$AGENTS_HOME/$1/company"
 }
 
 # Write agent.conf with plain absolute paths (no printf %q — that double-escaped rename artifacts).
+# Standalone agents get PRIVATE company dirs — never ~/hermes-agents/_standalone.
 write_agent_conf() {
   local dir="$1" data="$2" ws="$3"
   data="$(sanitize_path "$data")"
@@ -77,13 +160,15 @@ write_agent_conf() {
   case "$data$ws" in
     *\\*) echo "Error: refusing path with backslash: data=$data ws=$ws" >&2; exit 1 ;;
   esac
-  mkdir -p "$dir"
-  local none; none="$(standalone_shared)"
-  # Quote for spaces; paths are absolute host paths from this script.
+  mkdir -p "$dir" "$data" "$ws" "$dir/company/rules" "$dir/company/reports"
+  local uid gid
+  uid="$(file_uid "$data")"
+  gid="$(file_gid "$data")"
   {
     printf "AGENT_DATA='%s'\nAGENT_WORKSPACES='%s'\n" "${data//\'/\'\\\'\'}" "${ws//\'/\'\\\'\'}"
-    printf "COMPANY_RULES='%s'\nCOMPANY_REPORTS='%s'\nRULES_MODE='ro'\n" "$none/rules" "$none/reports"
+    printf "COMPANY_RULES='%s'\nCOMPANY_REPORTS='%s'\nRULES_MODE='ro'\n" "$dir/company/rules" "$dir/company/reports"
     printf "HERMES_WRITE_SAFE_ROOT='/opt/data:/opt/workspaces'\n"
+    printf "HERMES_UID='%s'\nHERMES_GID='%s'\n" "$uid" "$gid"
   } > "$dir/agent.conf"
 }
 
@@ -92,8 +177,10 @@ write_company_role_conf() {
   data="$(sanitize_path "$data")"
   ws="$(sanitize_path "$ws")"
   local shared="$AGENTS_HOME/companies/$company/shared"
-  mkdir -p "$dir" "$shared/rules" "$shared/reports/$role" "$shared/reports/_inbox"
-  local rules_mode reports write_safe
+  mkdir -p "$dir" "$data" "$ws" "$shared/rules" "$shared/reports/$role" "$shared/reports/_inbox"
+  local rules_mode reports write_safe uid gid
+  uid="$(file_uid "$data")"
+  gid="$(file_gid "$data")"
   if [ "$role" = "admin" ]; then
     rules_mode=rw
     reports="$shared/reports"
@@ -108,13 +195,14 @@ write_company_role_conf() {
     printf "COMPANY='%s'\nROLE='%s'\n" "$company" "$role"
     printf "COMPANY_RULES='%s'\nCOMPANY_REPORTS='%s'\nRULES_MODE='%s'\n" "$shared/rules" "$reports" "$rules_mode"
     printf "HERMES_WRITE_SAFE_ROOT='%s'\n" "$write_safe"
+    printf "HERMES_UID='%s'\nHERMES_GID='%s'\n" "$uid" "$gid"
   } > "$dir/agent.conf"
 }
 
 # Export the env a compose run needs for a given agent.
 agent_env() {
   local name="$1"
-  unset AGENT_DATA AGENT_WORKSPACES COMPANY COMPANY_RULES COMPANY_REPORTS RULES_MODE ROLE HERMES_WRITE_SAFE_ROOT
+  unset AGENT_DATA AGENT_WORKSPACES COMPANY COMPANY_RULES COMPANY_REPORTS RULES_MODE ROLE HERMES_WRITE_SAFE_ROOT HERMES_UID HERMES_GID
   local conf="$AGENTS_HOME/$name/agent.conf"
   # Per-agent overrides (used by `restore` to point an agent at existing data).
   [ -f "$conf" ] && . "$conf"
@@ -125,12 +213,12 @@ agent_env() {
   export AGENT_IMAGE="$AGENT_IMAGE"
   export AGENT_MEM_LIMIT="${AGENT_MEM_LIMIT:-4g}"
   export AGENT_CPU_LIMIT="${AGENT_CPU_LIMIT:-2}"
-  export HERMES_UID="${HERMES_UID:-$(id -u)}"
-  export HERMES_GID="${HERMES_GID:-$(id -g)}"
+  pin_hermes_ids "$AGENT_DATA"
+  persist_uids_in_conf "$name"
   export HERMES_REAL_HOME="${HERMES_REAL_HOME:-$HOME}"
-  local none; none="$(standalone_shared)"
-  export COMPANY_RULES="$(sanitize_path "${COMPANY_RULES:-$none/rules}")"
-  export COMPANY_REPORTS="$(sanitize_path "${COMPANY_REPORTS:-$none/reports}")"
+  local priv; priv="$(private_company_dir "$name")"
+  export COMPANY_RULES="$(sanitize_path "${COMPANY_RULES:-$priv/rules}")"
+  export COMPANY_REPORTS="$(sanitize_path "${COMPANY_REPORTS:-$priv/reports}")"
   export RULES_MODE="${RULES_MODE:-ro}"
   export HERMES_WRITE_SAFE_ROOT="${HERMES_WRITE_SAFE_ROOT:-/opt/data:/opt/workspaces}"
   mkdir -p "$COMPANY_RULES" "$COMPANY_REPORTS"
@@ -142,7 +230,8 @@ agent_env() {
 }
 
 compose_run() {
-  docker compose -f "$COMPOSE_FILE" --project-directory "$ROOT" "$@"
+  local proj; proj="$(compose_project_name)"
+  docker compose -f "$COMPOSE_FILE" --project-directory "$ROOT" --project-name "$proj" "$@"
 }
 
 valid_name() {
@@ -421,10 +510,16 @@ cmd_new() {
     esac
   done
   valid_name "$name"
+  if [ "$(id -u)" = "0" ]; then
+    echo "Error: do not run 'agent.sh new' as root (data would be owned by UID 0)." >&2
+    echo "sudo docker is fine; sudo agent.sh is not." >&2
+    exit 1
+  fi
   local data="$AGENTS_HOME/$name/data"
   local ws="$AGENTS_HOME/$name/workspaces"
   if [ -d "$data" ]; then echo "Error: agent '$name' already exists at $data"; exit 1; fi
   mkdir -p "$data" "$ws"
+  write_agent_conf "$AGENTS_HOME/$name" "$data" "$ws"
   init_overlay "$data"
   # Seed the agent's OWN .env from the template example (no shared secrets).
   if [ -f "$ROOT/.env.example" ]; then
@@ -436,6 +531,7 @@ cmd_new() {
   echo "Agent '$name' created (no clone — shares the one repo at $ROOT)."
   echo "  .env        : $data/.env"
   echo "  workspace   : $ws"
+  echo "  company     : $AGENTS_HOME/$name/company (private rules/reports, not shared)"
   if [ -n "$pack" ] && [ -n "$soul" ]; then
     echo "  WARN: both pack and soul given — using pack (pack wins)." >&2
     cmd_apply "$name" "$pack"
@@ -524,6 +620,41 @@ cmd_doctor() {
   if [ -f "$conf" ] && grep -qE "^COMPANY=" "$conf"; then
     echo "  ok    company $(grep -E '^COMPANY=' "$conf" | head -1 | cut -d= -f2 | tr -d "'") role $(grep -E '^ROLE=' "$conf" | head -1 | cut -d= -f2 | tr -d "'")"
   fi
+  local host_uid host_gid conf_uid=""
+  host_uid="$(file_uid "$data")"
+  host_gid="$(file_gid "$data")"
+  echo "  ok    data owner ${host_uid}:${host_gid}"
+  if [ "$(id -u)" = "0" ]; then
+    echo "  FAIL  agent.sh is running as root (sudo agent.sh remaps UID; use sudo docker only)"
+    fail=1
+  fi
+  if [ -f "$conf" ] && grep -qE '^HERMES_UID=' "$conf"; then
+    # shellcheck disable=SC1090
+    . "$conf"
+    conf_uid="${HERMES_UID:-}"
+    if [ -n "$conf_uid" ] && [ "$conf_uid" != "$host_uid" ]; then
+      echo "  FAIL  agent.conf HERMES_UID=$conf_uid but data owner is $host_uid"
+      fail=1
+    else
+      echo "  ok    HERMES_UID $conf_uid matches data owner"
+    fi
+    unset HERMES_UID HERMES_GID
+  else
+    echo "  warn  no HERMES_UID in agent.conf (next up will pin to data owner $host_uid)"
+  fi
+  if [ -f "$conf" ] && grep -q '_standalone' "$conf"; then
+    echo "  warn  agent.conf still points at _standalone (shared by every standalone agent)"
+  fi
+  if container_running "$name"; then
+    local env_uid
+    env_uid="$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$name" 2>/dev/null | sed -n 's/^HERMES_UID=//p' | head -1)"
+    if [ -n "$env_uid" ] && [ "$env_uid" != "$host_uid" ]; then
+      echo "  FAIL  container HERMES_UID=$env_uid but data owner is $host_uid"
+      fail=1
+    elif [ -n "$env_uid" ]; then
+      echo "  ok    container HERMES_UID $env_uid"
+    fi
+  fi
   exit "$fail"
 }
 
@@ -555,10 +686,22 @@ cmd_up() {
   fi
   # Export volume paths BEFORE ensure_image — compose interpolates volumes even on build.
   agent_env "$name"
+  if [ ! -f "$AGENTS_HOME/$name/agent.conf" ]; then
+    write_agent_conf "$AGENTS_HOME/$name" "$AGENT_DATA" "$AGENT_WORKSPACES"
+  fi
   mkdir -p "$AGENT_DATA" "$AGENT_WORKSPACES"
   ensure_image
-  compose_run up -d
-  echo "Agent '$name' starting. Logs: scripts/agent.sh logs $name"
+  # Never recreate a live/stopped container via the default compose project.
+  # Existing name → start in place (preserves mounts). Missing → isolated compose up.
+  if container_running "$name"; then
+    echo "Agent '$name' already running."
+  elif container_exists "$name"; then
+    docker start "$name"
+    echo "Agent '$name' started (existing container). Logs: scripts/agent.sh logs $name"
+  else
+    compose_run up -d
+    echo "Agent '$name' starting (compose project $(compose_project_name)). Logs: scripts/agent.sh logs $name"
+  fi
 }
 
 # Restore: point a (new or existing) agent name at an ALREADY-EXISTING data dir.
@@ -574,11 +717,19 @@ cmd_restore() {
   fi
   local dir="$AGENTS_HOME/$name"
   src="$(cd "$src" && pwd)"   # resolve to a real absolute path (no escapes)
-  write_agent_conf "$dir" "$src" "$AGENTS_HOME/$name/workspaces"
-  mkdir -p "$AGENTS_HOME/$name/workspaces"
+  local ws sibling
+  sibling="$(dirname "$src")/workspaces"
+  if [ -d "$sibling" ]; then
+    ws="$sibling"
+  else
+    ws="$AGENTS_HOME/$name/workspaces"
+  fi
+  write_agent_conf "$dir" "$src" "$ws"
+  mkdir -p "$ws"
   echo "Agent '$name' restored — reusing data at: $src"
   echo "  memory/state/.env/skills are preserved as-is (container is just re-attached)"
-  echo "  workspace: $AGENTS_HOME/$name/workspaces"
+  echo "  workspace: $ws"
+  echo "  company dirs: $dir/company/rules and $dir/company/reports (private — not shared)"
   echo "  Start: scripts/agent.sh up $name"
 }
 
@@ -764,7 +915,7 @@ cmd_company_list() {
           echo "    $role  $n  stopped"
         fi
       fi
-      unset COMPANY ROLE COMPANY_RULES COMPANY_REPORTS RULES_MODE HERMES_WRITE_SAFE_ROOT AGENT_DATA AGENT_WORKSPACES
+      unset COMPANY ROLE COMPANY_RULES COMPANY_REPORTS RULES_MODE HERMES_WRITE_SAFE_ROOT AGENT_DATA AGENT_WORKSPACES HERMES_UID HERMES_GID
     done
   done
   if [ "$found" = 0 ]; then
@@ -822,24 +973,45 @@ case "$CMD" in
     ;;
   down)
     [ $# -ge 2 ] || { echo "usage: agent.sh down <name>"; exit 1; }
-    valid_name "$2"; agent_env "$2"; compose_run down
+    valid_name "$2"
+    if container_exists "$2"; then
+      docker stop "$2" >/dev/null
+      docker rm "$2" >/dev/null
+      echo "Agent '$2' stopped and removed (data kept)."
+    else
+      echo "Agent '$2' has no container (already down)."
+    fi
     ;;
   restart)
     [ $# -ge 2 ] || { echo "usage: agent.sh restart <name>"; exit 1; }
-    valid_name "$2"; agent_env "$2"; compose_run restart
+    valid_name "$2"
+    if container_exists "$2"; then
+      docker restart "$2"
+      echo "Agent '$2' restarted."
+    else
+      echo "Error: no container named '$2'. Start it: scripts/agent.sh up $2" >&2
+      exit 1
+    fi
     ;;
   logs)
     [ $# -ge 2 ] || { echo "usage: agent.sh logs <name> [--once]"; exit 1; }
-    valid_name "$2"; agent_env "$2"
+    valid_name "$2"
+    container_exists "$2" || { echo "Error: no container named '$2'" >&2; exit 1; }
     if [ "${3:-}" = "--once" ]; then
-      compose_run logs --no-color --tail 80 gateway
+      docker logs --tail 80 "$2"
     else
-      compose_run logs -f --tail 200 gateway
+      docker logs -f --tail 200 "$2"
     fi
     ;;
   status)
     [ $# -ge 2 ] || { echo "usage: agent.sh status <name>"; exit 1; }
-    valid_name "$2"; agent_env "$2"; compose_run ps
+    valid_name "$2"
+    if container_exists "$2"; then
+      docker ps -a --filter "name=^${2}$" --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+    else
+      echo "Agent '$2' has no container."
+      exit 1
+    fi
     ;;
   config)
     [ $# -ge 2 ] || { echo "usage: agent.sh config <name>"; exit 1; }

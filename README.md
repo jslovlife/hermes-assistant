@@ -2,7 +2,7 @@
 
 Multi-agent Hermes messaging assistant. One Docker image, many isolated agents — each with its own data, bot token, persona ("soul"), and optional role ("pack"). Built for teams and companies that want dedicated, isolated assistants per role.
 
-**Docs:** [User guide](docs/USER_GUIDE.md) · [Architecture](docs/ARCHITECTURE.md) · [TMS](docs/TMS.md) · 中文版 [README.zh-CN.md](README.zh-CN.md)
+**Docs:** [User guide](docs/USER_GUIDE.md) · [Backup & restore](docs/BACKUP_RESTORE.md) · [Architecture](docs/ARCHITECTURE.md) · [TMS](docs/TMS.md) · 中文版 [README.zh-CN.md](README.zh-CN.md)
 
 > **Host needs only Docker + git.** No Hermes/Node/Python install for the bots. Optional Python 3 for the TMS console.
 
@@ -154,10 +154,17 @@ vim "$(./scripts/agent.sh config my-bot)"
 
 ### 4.4 Backup / restore
 
+The container is disposable. **`.env`, skills, and memory live in the data folder.** Full walkthrough (Mac + cloud): **[docs/BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md)**.
+
 ```bash
 ./scripts/agent.sh backup my-bot     # -> ~/hermes-agents/my-bot/backups/my-bot-<ts>.tar.gz
+# copy that tar.gz off the machine, then later:
+#   tar -xzf my-bot-….tar.gz
+#   ./scripts/agent.sh restore my-bot ~/hermes-agents/my-bot/data
+#   ./scripts/agent.sh up my-bot
 ```
-Backups include `.env`, memory, state.db, skills, overlay. Copy tarballs off the host.
+
+Do **not** run `new` or `apply` to recover an agent. Backups include `.env`, memory, `state.db`, skills, and overlay. Copy tarballs off the host.
 
 ---
 

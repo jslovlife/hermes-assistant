@@ -44,9 +44,9 @@ services:
       - no-new-privileges:true
 
     environment:
-      # Remap the container user to the host owner
-      - HERMES_UID=${HERMES_UID:-$(id -u)}
-      - HERMES_GID=${HERMES_GID:-$(id -g)}
+      # Remap the container user to the volume owner (set by agent.sh, never sudo id -u)
+      - HERMES_UID=${HERMES_UID}
+      - HERMES_GID=${HERMES_GID}
       - HERMES_REAL_HOME=${HERMES_REAL_HOME:-$HOME}
       # The shared repo is always mounted here (read-only)
       - REPO_ROOT=/opt/repo

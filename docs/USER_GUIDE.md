@@ -2,7 +2,7 @@
 
 This is the operator manual for the **Docker Hermes** product: one shared image, many isolated tenants, industry packs, and an optional localhost TMS console.
 
-Diagrams: [ARCHITECTURE.md](ARCHITECTURE.md) · TMS console: [TMS.md](TMS.md)
+Diagrams: [ARCHITECTURE.md](ARCHITECTURE.md) · Backup & restore: [BACKUP_RESTORE.md](BACKUP_RESTORE.md) · TMS console: [TMS.md](TMS.md)
 
 The agent always runs **in Docker**. You do not install Hermes, Node, or Python runtimes for the bot itself. The host needs Docker, git, and (for TMS) Python 3.
 
@@ -268,19 +268,23 @@ Do not let a tenant paste arbitrary `npx` MCP URLs. Only your catalog plus overl
 
 ## 10. Backups and restore
 
+The container is a hotel room. The data folder is the suitcase. Full starter guide (Mac + cloud, what to copy, what not to run): **[BACKUP_RESTORE.md](BACKUP_RESTORE.md)**.
+
 ```bash
 ./scripts/agent.sh backup acme-cs
 # prints a tar.gz under ~/hermes-agents/acme-cs/backups/
 ```
 
-Caches (`home`, `lsp`, `cache`) are excluded. To bring a tenant back after deleting the container:
+Caches (`home`, `lsp`, `cache`) are excluded. `.env`, skills, overlay, and memory are included.
+
+To bring an agent back after deleting the container (data dir still on disk):
 
 ```bash
-./scripts/agent.sh restore acme-cs /path/to/extracted/data
+./scripts/agent.sh restore acme-cs /path/to/that/data
 ./scripts/agent.sh up acme-cs
 ```
 
-Containers are disposable. **Data dirs are not.**
+Do not use `new` or `apply` for recovery. Containers are disposable. **Data dirs are not.**
 
 ---
 
