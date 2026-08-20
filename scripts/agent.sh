@@ -207,6 +207,8 @@ agent_env() {
   # Per-agent overrides (used by `restore` to point an agent at existing data).
   [ -f "$conf" ] && . "$conf"
   export AGENT_NAME="$name"
+  # Own compose project per agent. Lowercase: Compose rejects names like agentA.
+  export COMPOSE_PROJECT_NAME="$(compose_project_name)"
   export AGENT_DATA="$(sanitize_path "${AGENT_DATA:-$AGENTS_HOME/$name/data}")"
   export AGENT_WORKSPACES="$(sanitize_path "${AGENT_WORKSPACES:-$AGENTS_HOME/$name/workspaces}")"
   export REPO_ROOT="$ROOT"
@@ -231,7 +233,11 @@ agent_env() {
 
 compose_run() {
   local proj; proj="$(compose_project_name)"
-  docker compose -f "$COMPOSE_FILE" --project-directory "$ROOT" --project-name "$proj" "$@"
+  export COMPOSE_PROJECT_NAME="$proj"
+  # --env-file /dev/null: stop Compose from auto-loading <project-dir>/.env
+  # (repo .env is often root-owned/0600; interpolation vars come from agent_env).
+  docker compose --env-file /dev/null \
+    -f "$COMPOSE_FILE" --project-directory "$ROOT" --project-name "$proj" "$@"
 }
 
 valid_name() {

@@ -6,6 +6,37 @@
 
 > **宿主机只需要 Docker + git。** bot 本身无需安装 Hermes/Node/Python。可选 Python 3 跑 TMS 控制台。
 
+## 0. 宿主机前置条件（只做一次）
+
+这些是**宿主机层面**的步骤，必须最先做。新用户通常最先卡在这里。
+
+### 0.1 安装 Docker
+
+- Linux / macOS：安装 Docker（macOS 装 Docker Desktop）。确认能用：
+  ```bash
+  docker --version
+  ```
+
+### 0.2 给当前用户 Docker 权限（经典的 "permission denied" 修复）
+
+如果遇到 `permission denied while trying to connect to the docker API at unix:///var/run/docker.sock`，说明你的用户不在 `docker` 组里：
+
+```bash
+sudo usermod -aG docker $USER   # 把自己加进 docker 组
+newgrp docker                   # 让当前 shell 生效（或注销重登）
+
+docker ps                       # 现在应能不用 sudo 运行
+```
+> `docker ps` 必须**不用 sudo** 就能跑。若仍失败，检查 socket 属组：`ls -l /var/run/docker.sock`（应为 `root:docker`）。
+
+### 0.3 确认 git
+
+```bash
+git --version
+```
+
+当 `docker ps` 不用 sudo 能跑、git 也在，就可以开始下面的快速上手了。
+
 ---
 
 ## 1. 如何开始（快速上手）
@@ -41,8 +72,12 @@ open "$(./scripts/agent.sh config my-bot)"
 #       （选了 engineer 包就还要填 OPENCODE_GO_API_KEY）
 
 # 3. 启动，然后体检：
-./scripts/agent.sh up my-bot
+./scripts/agent.sh up my-bot       # 首次会拉/构建镜像，需几分钟
 ./scripts/agent.sh doctor my-bot     # 每行都应是 "ok"；FAIL = 那个 key 没配好
+
+# 4. 测试：现在立刻在 Telegram 私聊你的 bot。
+#    新建的 bot 不会主动发第一条消息——必须由你先给它发
+#    （打开你建的 bot，随便发一句）。它应该会回复。
 ```
 
 `config` 打印的 `.env` 路径，用来填：
@@ -65,6 +100,17 @@ open "$(./scripts/agent.sh config my-bot)"
 TMS_PASSWORD='设置一个长操作者密码' ./scripts/tms.sh
 # http://127.0.0.1:8787
 ```
+
+### 1.4 首次运行排障
+
+| 症状 | 原因 / 修复 |
+|---|---|
+| `permission denied ... docker.sock` | 不在 `docker` 组——见 [0.2](#02-给当前用户-docker-权限经典的-permission-denied-修复) |
+| `fatal: dubious ownership` 或 `Unable to create .git/index.lock: Permission denied` | 仓库属主是别的用户（如 root）。`sudo chown -R $USER:$USER .` 即可 |
+| `up` 很慢 / "pulling image" | 首次正常——要下载 `hermes-agent:base` 并构建。等它，然后重跑 `up` |
+| `doctor` 全 ok 但 bot 不回 | 你还没先给它发消息——**打开 bot，先由你发第一条**（bot 不会主动开口）|
+| 只忽略我 | `TELEGRAM_ALLOWED_USERS` 填错——必须是你自己的数字 ID（见 [telegram.md](docs/keys/telegram.md)）|
+| 还是没反应 | `./scripts/agent.sh logs my-bot` —— 看真实报错 |
 
 ---
 
