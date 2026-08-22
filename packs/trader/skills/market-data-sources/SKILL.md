@@ -41,6 +41,16 @@ snap = dc.market_data.get_snapshot(symbols=["NVDA"], category="stock")
 ```
 The repo's `webull_data.py` wraps this; run `python webull_data.py NVDA M5 500` after setting env keys.
 
+## Per-agent setup (each agent has its own isolated workspace)
+Each agent (e.g. `trader-1`) builds its OWN Webull venv — the environment is not shared.
+Inside the agent container, run once:
+```bash
+bash /opt/repo/scripts/setup-webull.sh
+```
+This creates `webull-venv` in the agent's workspace, installs the SDK, and drops
+`webull_data.py`. Credentials come from the agent's `.env` (`WEBULL_APP_KEY`/`WEBULL_APP_SECRET`).
+Then: `/opt/workspaces/webull-venv/bin/python /opt/workspaces/webull_data.py NVDA M5 100`
+
 ## Output
 - State the data source used, the date range, and any data-quality caveats (sparse bars, splits, etc.).
 - If using Webull minute data, note the timespan (M1/M5/...) and whether it is live or cached.
